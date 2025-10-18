@@ -28,11 +28,9 @@ export default function App() {
 
   // ✅ Initialize AudioContext ONCE
   useEffect(() => {
-    console.log("🎵 Initializing AudioContext");
     audioContextRef.current = new AudioContext({ sampleRate: 24000 });
 
     return () => {
-      console.log("🧹 Cleaning up AudioContext on unmount");
       if (
         audioContextRef.current &&
         audioContextRef.current.state !== "closed"
@@ -44,14 +42,13 @@ export default function App() {
 
   // ✅ NEW: Function to stop all audio immediately
   const stopAudioPlayback = useCallback(() => {
-    console.log("🛑 [INTERRUPTION] Stopping audio playback");
-
     // Stop all active audio sources
     activeSourcesRef.current.forEach((source) => {
       try {
         source.stop();
       } catch (e) {
         // Already stopped, ignore
+        console.log(e.message);
       }
     });
     activeSourcesRef.current = [];
@@ -61,8 +58,6 @@ export default function App() {
     nextStartTimeRef.current = 0;
     isPlayingRef.current = false;
     currentContextIdRef.current = null;
-
-    console.log("✅ [INTERRUPTION] Audio stopped and buffers cleared");
   }, []);
 
   // Memoized playback function
@@ -71,7 +66,6 @@ export default function App() {
     const audioQueue = audioQueueRef.current;
 
     if (!audioContext || audioContext.state === "closed") {
-      console.warn("⚠️ AudioContext not available");
       return;
     }
 
@@ -91,8 +85,6 @@ export default function App() {
     if (audioContext.state === "suspended") {
       await audioContext.resume();
     }
-
-    console.log(`🎵 Playing ${audioQueue.length} queued chunks`);
 
     while (audioQueue.length > 0) {
       const base64Chunk = audioQueue.shift();
@@ -149,8 +141,6 @@ export default function App() {
   useEffect(() => {
     const socket = connect();
 
-    console.log("🔌 Setting up socket listeners");
-
     socket.off("ai-audio-chunk");
     socket.off("ai-interrupt"); // ✅ NEW
     socket.off("ai-response-done");
@@ -159,7 +149,6 @@ export default function App() {
     // Handle audio chunks
     socket.on("ai-audio-chunk", (data) => {
       if (!data?.audio || !data?.contextId) {
-        console.warn("⚠️ Malformed chunk:", data);
         return;
       }
 
@@ -170,21 +159,15 @@ export default function App() {
         currentContextIdRef.current &&
         currentContextIdRef.current !== contextId
       ) {
-        console.log(
-          `🔄 New context detected (${contextId}), clearing old audio`
-        );
         stopAudioPlayback(); // ✅ Use stop function
       }
 
       currentContextIdRef.current = contextId;
-
-      console.log(`🎧 Received chunk for ${contextId} (final: ${isFinal})`);
       audioQueueRef.current.push(audio);
       playQueuedAudio();
 
       // Reset state when stream finishes
       if (isFinal) {
-        console.log(`🏁 Final chunk for context ${contextId}`);
         const audioContext = audioContextRef.current;
 
         if (audioContext && nextStartTimeRef.current > 0) {
@@ -193,7 +176,6 @@ export default function App() {
             nextStartTimeRef.current - audioContext.currentTime
           );
           setTimeout(() => {
-            console.log("✅ Playback complete, resetting state");
             audioQueueRef.current = [];
             nextStartTimeRef.current = 0;
             currentContextIdRef.current = null;
@@ -206,7 +188,6 @@ export default function App() {
 
     // ✅ NEW: Handle interruption signal from backend
     socket.on("ai-interrupt", () => {
-      console.log("⚠️ [INTERRUPTION] Received interrupt signal from backend");
       stopAudioPlayback();
     });
 
@@ -219,7 +200,6 @@ export default function App() {
     });
 
     return () => {
-      console.log("🧹 Cleaning up socket listeners");
       socket.off("ai-audio-chunk");
       socket.off("ai-interrupt");
       socket.off("ai-response-done");
@@ -230,7 +210,7 @@ export default function App() {
   const handleStart = async () => {
     try {
       connect();
-      setStage("chatting");
+      setStage("starting");
 
       await playBlob(
         new Blob([await fetch("/intro.mp3").then((r) => r.arrayBuffer())], {
@@ -239,7 +219,7 @@ export default function App() {
       );
 
       await start();
-      setStatusLabel("Listening...");
+      setStage("chatting");
     } catch (err) {
       console.error("Mic denied:", err);
       setStage("denied");
@@ -247,22 +227,22 @@ export default function App() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#fdfcf7] font-[Inter] p-4">
-      {stage === "idle" && <StartButton onStart={handleStart} />}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#fdfcf7] font-[Inter] p-4">
+      {/* Avatar always visible */}
+      <Avatar />
 
-      {stage === "chatting" && (
-        <div>
-          <Avatar />
-        </div>
-      )}
+      {/* Start button appears only in idle stage */}
+      <StartButton stage={stage} onStart={handleStart} />
 
+      {/* Denied state message */}
       {stage === "denied" && (
-        <div className="flex flex-col items-center p-8 bg-white rounded-xl shadow-2xl">
+        <div className="flex flex-col items-center p-8 bg-white rounded-xl shadow-2xl mt-8">
           <p className="text-red-600 font-bold text-xl">
-            Microphone Access Denied
+            Mikrofonzugriff verweigert
           </p>
-          <p className="text-gray-500 mt-2">
-            Please enable microphone permissions in your browser settings.
+          <p className="text-gray-500 mt-2 text-center">
+            Bitte aktivieren Sie die Mikrofonberechtigungen in Ihren
+            Browsereinstellungen.
           </p>
         </div>
       )}

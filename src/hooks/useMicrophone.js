@@ -33,22 +33,8 @@ export function useMicrophone({ onChunk }) {
     const rms = calculateRms(int16Array);
     const isLoud = rms > VAD_THRESHOLD;
 
-    // Logging for debugging
-    // console.log(
-    //   "🎧 RMS:",
-    //   rms.toFixed(5),
-    //   "| Loud:",
-    //   isLoud,
-    //   "| Speaking:",
-    //   speakingRef.current // Use the Ref here for the log
-    // );
-
     // CRITICAL: Always send the chunk to prevent server timeouts.
     onChunk(pcm16Buffer);
-
-    // ------------------------------------------------------------------
-    // --- VAD Turn Detection Logic ---
-    // ------------------------------------------------------------------
 
     // 1. LOUD: Speech is detected.
     if (isLoud) {
@@ -79,11 +65,6 @@ export function useMicrophone({ onChunk }) {
           setSpeakingState(false);
 
           console.log("✅ Silence timer expired — calling onAudioEnd()");
-
-          // if (onAudioEnd) {
-          //   console.log("🛑 Silence detected, sending audio-end...");
-          //   onAudioEnd();
-          // }
 
           silenceTimerRef.current = null;
           console.log(
@@ -127,25 +108,6 @@ export function useMicrophone({ onChunk }) {
       // Deny logic would go here if needed
       throw error;
     }
-  }
-
-  function stop() {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-    setSpeakingState(false);
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(console.error);
-      audioContextRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    isPausedRef.current = false;
-    console.log("🛑 Microphone stopped.");
   }
 
   function pause() {
