@@ -1,15 +1,16 @@
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-export function useSocket({ onStatus }) {
+export function useSocket({ onStatus, token }) {
   const socketRef = useRef(null);
-  const socketUrl = import.meta.env.VITE_SOCKET_URL;
+  const socketUrl = import.meta.env.VITE_SERVER_URL;
 
+  // 🧹 Cleanup on unmount
   useEffect(() => {
     return () => {
       if (socketRef.current) {
         console.log("🧹 Cleaning up socket on unmount");
-        socketRef.current.off(); // remove all listeners
+        socketRef.current.off();
         socketRef.current.disconnect();
         socketRef.current = null;
       }
@@ -32,10 +33,17 @@ export function useSocket({ onStatus }) {
 
     socketRef.current = socket;
 
-    // ✅ Basic connection logs
+    // ✅ When connected
     socket.on("connect", () => {
       console.log(`✅ Connected to server (id: ${socket.id})`);
       onStatus?.("Connected");
+
+      if (token) {
+        console.log("🎟️ Sending token for realtime session:", token);
+        socket.emit("start-realtime", { token });
+      } else {
+        console.warn("⚠️ No token provided — skipping start-realtime emit");
+      }
     });
 
     socket.on("disconnect", (reason) => {

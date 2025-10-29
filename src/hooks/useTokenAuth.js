@@ -1,0 +1,31 @@
+import { useEffect, useState } from "react";
+
+export function useTokenAuth() {
+  const [isAuthorized, setIsAuthorized] = useState(null);
+  const [token, setToken] = useState(null);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get("token");
+
+    if (!tokenParam) {
+      setIsAuthorized(false);
+      return;
+    }
+    setToken(tokenParam);
+
+    fetch(
+      `${
+        import.meta.env.VITE_SERVER_URL
+      }/api/auth/verify-token?token=${tokenParam}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setIsAuthorized(true);
+        else setIsAuthorized(false);
+      })
+      .catch(() => setIsAuthorized(false));
+  }, []);
+
+  return { isAuthorized, token };
+}

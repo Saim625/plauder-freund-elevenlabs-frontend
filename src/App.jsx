@@ -4,10 +4,43 @@ import Avatar from "./components/Avatar";
 import { useMicrophone } from "./hooks/useMicrophone";
 import { useSocket } from "./hooks/useSocket";
 import { playBlob } from "./utils/audioHelpers";
+import { useTokenAuth } from "./hooks/useTokenAuth";
+import { useSessionMessages } from "./hooks/useSessionMessages";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
   const [statusLabel, setStatusLabel] = useState("");
+
+  const { isAuthorized, token } = useTokenAuth();
+
+  async function saveSessionMemory() {
+    const storageKey = `pf_chat_${token}`;
+    const raw = sessionStorage.getItem(storageKey);
+
+    if (!raw) {
+      console.warn("⚠️ No messages found in sessionStorage for this token.");
+      return;
+    }
+
+    const sessionMessages = JSON.parse(raw);
+
+    // 🧠 Only take user messages (ignore assistant/system)
+    const userMessagesOnly = sessionMessages.filter((m) => m.role === "user");
+
+    const text = userMessagesOnly.map((m) => m.text).join("\n");
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SERVER_URL}/api/memory/summarize`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, text }),
+      }
+    );
+
+    const data = await res.json();
+    console.log("✅ Memory summarize response:", data);
+  }
 
   // Audio playback state
   const audioContextRef = useRef(null);
@@ -20,11 +53,14 @@ export default function App() {
 
   const { connect, sendChunk, disconnect, socketRef } = useSocket({
     onStatus: setStatusLabel,
+    token,
   });
 
   const { start, stop } = useMicrophone({
     onChunk: sendChunk,
   });
+
+  const { addMessage, messages } = useSessionMessages({ token, limit: 0 });
 
   // ✅ Initialize AudioContext ONCE
   useEffect(() => {
@@ -191,6 +227,18 @@ export default function App() {
       stopAudioPlayback();
     });
 
+    // for storing user messages in session storage
+    socket.on("user-transcript", (data) => {
+      if (!data?.text) return;
+      addMessage({ role: "user", text: data.text });
+    });
+
+    // for storing AI response in session storage
+    socket.on("ai-transcript", (data) => {
+      if (!data?.text) return;
+      addMessage({ role: "assistant", text: data.text });
+    });
+
     socket.on("ai-response-done", (data) => {
       console.log("✅ AI response complete:", data);
     });
@@ -199,13 +247,74 @@ export default function App() {
       console.error("❌ AI Error:", message);
     });
 
+    // ✅ When socket disconnects, save session memory
+    socket.on("disconnect", () => {
+      const sessionMessages = JSON.parse(sessionStorage.getItem("messages"));
+      saveSessionMemory(sessionMessages, token);
+    });
+
+    // ✅ When user closes tab or refreshes
+    window.addEventListener("beforeunload", () => {
+      console.log("📤 beforeunload triggered!");
+      const messages = JSON.parse(sessionStorage.getItem("messages"));
+      console.log("🧠 Messages to summarize:", messages);
+      saveSessionMemory(messages, token);
+    });
+
     return () => {
       socket.off("ai-audio-chunk");
       socket.off("ai-interrupt");
       socket.off("ai-response-done");
       socket.off("ai-error");
+      socket.off("user-transcript");
+      socket.off("ai-transcript");
+      socket.off("disconnect");
+      window.removeEventListener("beforeunload", () => {
+        const sessionMessages = JSON.parse(sessionStorage.getItem("messages"));
+        saveSessionMemory(sessionMessages, token);
+      });
     };
   }, [connect, playQueuedAudio, stopAudioPlayback]); // ✅ Add stopAudioPlayback
+
+  useEffect(() => {
+    console.log("🧠 Session messages updated:", messages);
+  }, [messages]);
+
+  if (isAuthorized === null)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 text-gray-600 text-lg">
+        Lädt...
+      </div>
+    );
+
+  if (!isAuthorized)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-600">
+        <h1 className="text-2xl font-semibold mb-2">Zugriff verweigert</h1>
+        <p className="text-gray-700">Ungültiges oder fehlendes Token.</p>
+      </div>
+    );
+
+  // const generateGreeting = async () => {
+  //   const systemPrompt = `
+  //   You are a warm, friendly AI companion.
+  //   Greet the user naturally as if starting a new chat.
+  //   Keep it under 15 words. Avoid robotic or repetitive phrases.
+  // `;
+
+  //   // Instead of using a dedicated API, just reuse your normal GPT call
+  //   const gptResponse = await getGPTResponse([
+  //     { role: "system", content: systemPrompt },
+  //   ]);
+
+  //   const greetingText = gptResponse; // Extract text
+
+  //   // Convert text → voice
+  //   const audioBlob = await getElevenLabsAudio(greetingText);
+
+  //   // Play audio
+  //   playAudio(audioBlob);
+  // };
 
   const handleStart = async () => {
     try {
@@ -217,6 +326,8 @@ export default function App() {
           type: "audio/mpeg",
         })
       );
+
+      // await generateGreeting();
 
       await start();
       setStage("chatting");
