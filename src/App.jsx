@@ -13,7 +13,7 @@ export default function App() {
 
   const { isAuthorized, token } = useTokenAuth();
 
-  async function saveSessionMemory() {
+  function saveSessionMemory() {
     const storageKey = `pf_chat_${token}`;
     const raw = sessionStorage.getItem(storageKey);
 
@@ -26,20 +26,17 @@ export default function App() {
 
     // 🧠 Only take user messages (ignore assistant/system)
     const userMessagesOnly = sessionMessages.filter((m) => m.role === "user");
-
     const text = userMessagesOnly.map((m) => m.text).join("\n");
 
-    const res = await fetch(
-      `${import.meta.env.VITE_SERVER_URL}/api/memory/summarize`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, text }),
-      }
-    );
+    // Prepare data as Blob
+    const payload = JSON.stringify({ token, text });
+    const blob = new Blob([payload], { type: "application/json" });
 
-    const data = await res.json();
-    console.log("✅ Memory summarize response:", data);
+    // Send using sendBeacon
+    const url = `${import.meta.env.VITE_SERVER_URL}/api/memory/summarize`;
+    const sent = navigator.sendBeacon(url, blob);
+
+    console.log("📡 sendBeacon sent?", sent);
   }
 
   // Audio playback state
