@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-export function useSocket({ onStatus, token }) {
+export function useSocket({ token }) {
   const socketRef = useRef(null);
   const socketUrl = import.meta.env.VITE_SERVER_URL;
 
@@ -17,62 +17,66 @@ export function useSocket({ onStatus, token }) {
     };
   }, []);
 
-  function connect(url = socketUrl) {
-    // Prevent duplicates
-    if (socketRef.current && socketRef.current.connected) {
-      console.log("⚙️ Reusing existing socket connection");
-      return socketRef.current;
-    }
-
-    console.log(`🔄 [FE] Connecting to Socket: ${url}`);
-    const socket = io(url, {
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-    });
-
-    socketRef.current = socket;
-
-    // ✅ When connected
-    socket.on("connect", () => {
-      console.log(`✅ Connected to server (id: ${socket.id})`);
-      onStatus?.("Connected");
-
-      if (token) {
-        console.log("🎟️ Sending token for realtime session:", token);
-        socket.emit("start-realtime", { token });
-      } else {
-        console.warn("⚠️ No token provided — skipping start-realtime emit");
+  const connect = useCallback(
+    (url = socketUrl) => {
+      // Prevent duplicates (This logic is only useful *after* a successful connection)
+      if (socketRef.current) {
+        console.log("⚙️ Reusing existing socket connection");
+        return socketRef.current;
       }
-    });
 
-    socket.on("disconnect", (reason) => {
-      console.log(`🔴 Disconnected: ${reason}`);
-      onStatus?.("Disconnected");
-    });
+      console.log(`🔄 [FE] Connecting to Socket: ${url}`);
+      const socket = io(url, {
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+      });
 
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket connection error:", err.message);
-      onStatus?.("Connection Error");
-    });
+      socketRef.current = socket;
 
-    return socket;
-  }
+      // ✅ When connected
+      socket.on("connect", () => {
+        console.log(`✅ Connected to server (id: ${socket.id})`);
 
-  function disconnect() {
+        if (token) {
+          console.log("🎟️ Sending token for realtime session:", token);
+          socket.emit("start-realtime", { token });
+        } else {
+          console.warn("⚠️ No token provided — skipping start-realtime emit");
+        }
+      });
+
+      socket.on("disconnect", (reason) => {
+        console.log(`🔴 Disconnected: ${reason}`);
+      });
+
+      socket.on("connect_error", (err) => {
+        console.error("❌ Socket connection error:", err.message);
+      });
+
+      return socket;
+    },
+    [token]
+  );
+
+  // ... (disconnect and sendChunk functions) ...
+
+  // NOTE: You should also wrap `disconnect` and `sendChunk` in useCallback for best practice.
+
+  const disconnect = useCallback(() => {
     if (socketRef.current) {
       console.log("⚠️ Manually closing socket");
       socketRef.current.off();
       socketRef.current.disconnect();
       socketRef.current = null;
     }
-  }
+  }, []);
 
-  function sendChunk(data) {
+  const sendChunk = useCallback((data) => {
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("audio-chunk", data);
     }
-  }
+  }, []);
 
   return { connect, disconnect, sendChunk, socketRef };
 }

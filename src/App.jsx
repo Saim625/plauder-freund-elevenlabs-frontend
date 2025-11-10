@@ -6,50 +6,26 @@ import { useSocket } from "./hooks/useSocket";
 import { playBlob } from "./utils/audioHelpers";
 import { useTokenAuth } from "./hooks/useTokenAuth";
 import { useSessionMessages } from "./hooks/useSessionMessages";
+import { useAudioPlayer } from "./hooks/useAudioPlayer";
+import { useSessionMemory } from "./hooks/useSessionMemory";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
-  const [statusLabel, setStatusLabel] = useState("");
 
   const { isAuthorized, token } = useTokenAuth();
 
-  function saveSessionMemory() {
-    const storageKey = `pf_chat_${token}`;
-    const raw = sessionStorage.getItem(storageKey);
-
-    if (!raw) {
-      console.warn("⚠️ No messages found in sessionStorage for this token.");
-      return;
-    }
-
-    const sessionMessages = JSON.parse(raw);
-
-    // 🧠 Only take user messages (ignore assistant/system)
-    const userMessagesOnly = sessionMessages.filter((m) => m.role === "user");
-    const text = userMessagesOnly.map((m) => m.text).join("\n");
-
-    // Prepare data as Blob
-    const payload = JSON.stringify({ token, text });
-    const blob = new Blob([payload], { type: "application/json" });
-
-    // Send using sendBeacon
-    const url = `${import.meta.env.VITE_SERVER_URL}/api/memory/summarize`;
-    const sent = navigator.sendBeacon(url, blob);
-
-    console.log("📡 sendBeacon sent?", sent);
-  }
-
-  // Audio playback state
-  const audioContextRef = useRef(null);
-  const audioQueueRef = useRef([]);
-  const isPlayingRef = useRef(false);
-  const nextStartTimeRef = useRef(0);
-  const currentContextIdRef = useRef(null);
-  const activeSourcesRef = useRef([]); // ✅ NEW: Track active audio sources
-  const MIN_BUFFER_CHUNKS = 2;
+  // 1. Audio Playback Logic
+  const {
+    audioContextRef,
+    audioQueueRef,
+    currentContextIdRef,
+    stopAudioPlayback,
+    playQueuedAudio,
+    activeSourcesRef,
+    nextStartTimeRef,
+  } = useAudioPlayer();
 
   const { connect, sendChunk, disconnect, socketRef } = useSocket({
-    onStatus: setStatusLabel,
     token,
   });
 
@@ -59,119 +35,13 @@ export default function App() {
 
   const { addMessage, messages } = useSessionMessages({ token, limit: 0 });
 
-  // ✅ Initialize AudioContext ONCE
-  useEffect(() => {
-    audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-
-    return () => {
-      if (
-        audioContextRef.current &&
-        audioContextRef.current.state !== "closed"
-      ) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // ✅ NEW: Function to stop all audio immediately
-  const stopAudioPlayback = useCallback(() => {
-    // Stop all active audio sources
-    activeSourcesRef.current.forEach((source) => {
-      try {
-        source.stop();
-      } catch (e) {
-        // Already stopped, ignore
-        console.log(e.message);
-      }
-    });
-    activeSourcesRef.current = [];
-
-    // Clear queue and reset state
-    audioQueueRef.current = [];
-    nextStartTimeRef.current = 0;
-    isPlayingRef.current = false;
-    currentContextIdRef.current = null;
-  }, []);
-
-  // Memoized playback function
-  const playQueuedAudio = useCallback(async () => {
-    const audioContext = audioContextRef.current;
-    const audioQueue = audioQueueRef.current;
-
-    if (!audioContext || audioContext.state === "closed") {
-      return;
-    }
-
-    if (isPlayingRef.current || audioQueue.length === 0) {
-      return;
-    }
-
-    if (
-      nextStartTimeRef.current === 0 &&
-      audioQueue.length < MIN_BUFFER_CHUNKS
-    ) {
-      return;
-    }
-
-    isPlayingRef.current = true;
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
-    }
-
-    while (audioQueue.length > 0) {
-      const base64Chunk = audioQueue.shift();
-
-      try {
-        const binaryString = atob(base64Chunk);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        const pcmData = new Int16Array(bytes.buffer);
-        const audioBuffer = audioContext.createBuffer(1, pcmData.length, 24000);
-        const channelData = audioBuffer.getChannelData(0);
-        for (let i = 0; i < pcmData.length; i++) {
-          channelData[i] = pcmData[i] / 32768.0;
-        }
-
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-
-        if (nextStartTimeRef.current === 0) {
-          nextStartTimeRef.current = audioContext.currentTime;
-        }
-
-        source.start(nextStartTimeRef.current);
-        nextStartTimeRef.current += audioBuffer.duration;
-
-        // ✅ NEW: Track active source for interruption
-        activeSourcesRef.current.push(source);
-
-        // ✅ NEW: Remove from tracking when finished
-        source.onended = () => {
-          const index = activeSourcesRef.current.indexOf(source);
-          if (index > -1) {
-            activeSourcesRef.current.splice(index, 1);
-          }
-        };
-      } catch (err) {
-        console.error("❌ Error decoding audio chunk:", err);
-      }
-    }
-
-    isPlayingRef.current = false;
-
-    // Check if more chunks arrived while playing
-    if (audioQueueRef.current.length > 0) {
-      setTimeout(() => playQueuedAudio(), 50);
-    }
-  }, []);
+  const { saveSessionMemory } = useSessionMemory({ token, messages });
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
+    if (!token) {
+      return;
+    }
     const socket = connect();
 
     socket.off("ai-audio-chunk");
@@ -179,7 +49,6 @@ export default function App() {
     socket.off("ai-response-done");
     socket.off("ai-error");
 
-    // Handle audio chunks
     socket.on("ai-audio-chunk", (data) => {
       if (!data?.audio || !data?.contextId) {
         return;
@@ -244,19 +113,9 @@ export default function App() {
       console.error("❌ AI Error:", message);
     });
 
-    // ✅ When socket disconnects, save session memory
-    socket.on("disconnect", () => {
-      const sessionMessages = JSON.parse(sessionStorage.getItem("messages"));
-      saveSessionMemory(sessionMessages, token);
-    });
-
-    // ✅ When user closes tab or refreshes
-    window.addEventListener("beforeunload", () => {
-      console.log("📤 beforeunload triggered!");
-      const messages = JSON.parse(sessionStorage.getItem("messages"));
-      console.log("🧠 Messages to summarize:", messages);
-      saveSessionMemory(messages, token);
-    });
+    // --- DISCONNECT/MEMORY HANDLING ---
+    // saveSessionMemory is provided by the useSessionMemory hook
+    socket.on("disconnect", saveSessionMemory);
 
     return () => {
       socket.off("ai-audio-chunk");
@@ -266,12 +125,15 @@ export default function App() {
       socket.off("user-transcript");
       socket.off("ai-transcript");
       socket.off("disconnect");
-      window.removeEventListener("beforeunload", () => {
-        const sessionMessages = JSON.parse(sessionStorage.getItem("messages"));
-        saveSessionMemory(sessionMessages, token);
-      });
     };
-  }, [connect, playQueuedAudio, stopAudioPlayback]); // ✅ Add stopAudioPlayback
+  }, [
+    connect,
+    token,
+    stopAudioPlayback,
+    playQueuedAudio,
+    addMessage,
+    saveSessionMemory,
+  ]);
 
   useEffect(() => {
     console.log("🧠 Session messages updated:", messages);
@@ -292,40 +154,39 @@ export default function App() {
       </div>
     );
 
-  // const generateGreeting = async () => {
-  //   const systemPrompt = `
-  //   You are a warm, friendly AI companion.
-  //   Greet the user naturally as if starting a new chat.
-  //   Keep it under 15 words. Avoid robotic or repetitive phrases.
-  // `;
-
-  //   // Instead of using a dedicated API, just reuse your normal GPT call
-  //   const gptResponse = await getGPTResponse([
-  //     { role: "system", content: systemPrompt },
-  //   ]);
-
-  //   const greetingText = gptResponse; // Extract text
-
-  //   // Convert text → voice
-  //   const audioBlob = await getElevenLabsAudio(greetingText);
-
-  //   // Play audio
-  //   playAudio(audioBlob);
-  // };
-
   const handleStart = async () => {
+    // 1. --- CRITICAL FIX START ---
+    const audioContext = audioContextRef.current;
+
+    // Create the context NOW, on click, if it doesn't exist.
+    if (!audioContext) {
+      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+    }
+
+    // Resume the context IMMEDIATELY and SYNCHRONOUSLY
     try {
-      connect();
+      // Use the newly created or existing context
+      await audioContextRef.current.resume();
+      console.log(
+        "✅ Playback AudioContext successfully resumed by user gesture."
+      );
+    } catch (e) {
+      console.error("❌ Failed to resume Playback AudioContext:", e);
+      // Handle failure (e.g., show a persistent button with a "Click to enable sound")
+    }
+    // 1. --- CRITICAL FIX END ---
+
+    try {
       setStage("starting");
 
+      // Now you can safely use 'await' for fetching and starting the mic
       await playBlob(
         new Blob([await fetch("/intro.mp3").then((r) => r.arrayBuffer())], {
           type: "audio/mpeg",
         })
       );
 
-      // await generateGreeting();
-
+      // The start() call (which creates the MIC context) can proceed
       await start();
       setStage("chatting");
     } catch (err) {
