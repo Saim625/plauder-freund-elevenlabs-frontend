@@ -60,6 +60,7 @@ export function useAudioPlayer() {
       audioContext.state === "interrupted"
     ) {
       await audioContext.resume();
+      console.log("State of Audio Context", audioContext.state);
     }
 
     if (
@@ -67,6 +68,8 @@ export function useAudioPlayer() {
       audioQueue.length < MIN_BUFFER_CHUNKS
     ) {
       return;
+      console.log("Length", audioQueue.length);
+      s;
     }
 
     isPlayingRef.current = true;

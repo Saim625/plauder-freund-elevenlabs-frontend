@@ -126,14 +126,7 @@ export default function App() {
       socket.off("ai-transcript");
       socket.off("disconnect");
     };
-  }, [
-    connect,
-    token,
-    stopAudioPlayback,
-    playQueuedAudio,
-    addMessage,
-    saveSessionMemory,
-  ]);
+  }, [token]);
 
   useEffect(() => {
     console.log("🧠 Session messages updated:", messages);
