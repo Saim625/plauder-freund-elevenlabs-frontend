@@ -29,6 +29,7 @@ export function useSocket({ token }) {
       const socket = io(url, {
         transports: ["websocket"],
         reconnection: true,
+        withCredentials: false,
         reconnectionAttempts: 5,
       });
 
