@@ -56,20 +56,11 @@ export function useMicrophone({ onChunk }) {
     else if (speakingRef.current) {
       // Start the timer only if it's not already running
       if (!silenceTimerRef.current) {
-        console.log(
-          "🤫 Quiet detected while speaking. Starting silence timer..."
-        );
-
         silenceTimerRef.current = setTimeout(() => {
           // Timer expired, we are officially done speaking
           setSpeakingState(false);
 
-          console.log("✅ Silence timer expired — calling onAudioEnd()");
-
           silenceTimerRef.current = null;
-          console.log(
-            `Silence confirmed. Turn ended after ${SILENCE_GRACE_PERIOD_MS}ms.`
-          );
         }, SILENCE_GRACE_PERIOD_MS);
       }
     }
@@ -87,8 +78,6 @@ export function useMicrophone({ onChunk }) {
 
       // This path must be correct for the worklet to load
       await audioContext.audioWorklet.addModule("/pcm-processor.js");
-      console.log(`✅ Worklet loaded successfully: /pcm-processor.js`);
-
       const source = audioContext.createMediaStreamSource(stream);
       const pcmNode = new AudioWorkletNode(audioContext, "pcm-processor");
 
@@ -101,8 +90,6 @@ export function useMicrophone({ onChunk }) {
       // Ensure state is clean when starting
       setSpeakingState(false);
       isPausedRef.current = false;
-
-      console.log("🎤 Mic capture started. Streaming 16kHz PCM data.");
     } catch (error) {
       console.error("❌ Error accessing microphone:", error);
       // Deny logic would go here if needed
@@ -117,12 +104,10 @@ export function useMicrophone({ onChunk }) {
       silenceTimerRef.current = null;
     }
     setSpeakingState(false);
-    console.log("⏸️ Microphone paused by application.");
   }
 
   function resume() {
     isPausedRef.current = false;
-    console.log("▶️ Microphone resumed by application.");
   }
 
   useEffect(() => {

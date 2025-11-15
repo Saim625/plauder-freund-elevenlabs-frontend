@@ -53,7 +53,6 @@ export default function App() {
       if (!data?.audio || !data?.contextId) {
         return;
       }
-
       const { contextId, audio, isFinal } = data;
 
       // If new context, clear old audio queue
@@ -70,21 +69,24 @@ export default function App() {
 
       // Reset state when stream finishes
       if (isFinal) {
-        const audioContext = audioContextRef.current;
+        const checkIfDone = () => {
+          if (
+            activeSourcesRef.current.length === 0 &&
+            audioQueueRef.current.length === 0
+          ) {
+            // ✅ Frontend tells backend: "I'm done playing audio!"
+            socket.emit("ai-audio-complete", { contextId });
 
-        if (audioContext && nextStartTimeRef.current > 0) {
-          const remaining = Math.max(
-            0,
-            nextStartTimeRef.current - audioContext.currentTime
-          );
-          setTimeout(() => {
+            // Clean up frontend state
             audioQueueRef.current = [];
             nextStartTimeRef.current = 0;
             currentContextIdRef.current = null;
             isPlayingRef.current = false;
-            activeSourcesRef.current = []; // ✅ Clear sources
-          }, remaining * 1000 + 300);
-        }
+          } else {
+            setTimeout(checkIfDone, 100);
+          }
+        };
+        setTimeout(checkIfDone, 200);
       }
     });
 
@@ -95,6 +97,8 @@ export default function App() {
 
     // for storing user messages in session storage
     socket.on("user-transcript", (data) => {
+      const transcriptTime = Date.now();
+      console.log(`📝 [FE] Transcript received at ${transcriptTime}`);
       if (!data?.text) return;
       addMessage({ role: "user", text: data.text });
     });

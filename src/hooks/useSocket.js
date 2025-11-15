@@ -21,7 +21,6 @@ export function useSocket({ token }) {
     (url = socketUrl) => {
       // Prevent duplicates (This logic is only useful *after* a successful connection)
       if (socketRef.current) {
-        console.log("⚙️ Reusing existing socket connection");
         return socketRef.current;
       }
 
@@ -29,7 +28,6 @@ export function useSocket({ token }) {
       const socket = io(url, {
         transports: ["websocket"],
         reconnection: true,
-        withCredentials: false,
         reconnectionAttempts: 5,
       });
 
@@ -59,10 +57,6 @@ export function useSocket({ token }) {
     },
     [token]
   );
-
-  // ... (disconnect and sendChunk functions) ...
-
-  // NOTE: You should also wrap `disconnect` and `sendChunk` in useCallback for best practice.
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
