@@ -1,13 +1,24 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-export function useSessionMemory({ messages, token }) {
+export function useSessionMemory({ token }) {
+  // ✅ No messages param!
+  const hasSavedRef = useRef(false);
+  const isUnloadingRef = useRef(false);
+
   const saveSessionMemory = useCallback(() => {
-    if (!messages || !messages.length) {
-      console.warn("⚠️ No messages found to summarize.");
+    if (hasSavedRef.current) {
       return;
     }
 
+    // ✅ Read directly from sessionStorage
     const key = `pf_chat_${token}`;
+    const raw = sessionStorage.getItem(key);
+    console.log(raw);
+    const messages = raw ? JSON.parse(raw) : [];
+
+    if (!messages || !messages.length) {
+      return;
+    }
 
     const conversationForSummary = messages
       .map((m) => `${m.role.toUpperCase()}: ${m.text}`)
@@ -19,20 +30,24 @@ export function useSessionMemory({ messages, token }) {
     const url = `${import.meta.env.VITE_SERVER_URL}/api/memory/summarize`;
     const sent = navigator.sendBeacon(url, blob);
 
-    console.log("📡 sendBeacon sent?", sent);
-
-    // 🎯 CRITICAL: Clear session storage after queuing the data for backend save
     if (sent) {
-      sessionStorage.removeItem(key);
-      console.log(`🧹 Cleared sessionStorage key: ${key}`);
-    }
-  }, [messages, token]);
+      hasSavedRef.current = true;
 
-  // Effect to attach the memory saving to browser cleanup events
+      if (isUnloadingRef.current) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  }, [token]); // ✅ Only token dependency!
+
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      console.log("📤 beforeunload triggered! Saving memory...");
-      // saveSessionMemory runs inside here
+    if (!token) {
+      return;
+    }
+
+    const handleBeforeUnload = (e) => {
+      console.log("📤 [beforeunload] EVENT FIRED!");
+      isUnloadingRef.current = true;
+
       saveSessionMemory();
     };
 
@@ -41,7 +56,7 @@ export function useSessionMemory({ messages, token }) {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [saveSessionMemory]);
+  }, [token]);
 
   return { saveSessionMemory };
 }

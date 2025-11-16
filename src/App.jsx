@@ -33,9 +33,9 @@ export default function App() {
     onChunk: sendChunk,
   });
 
-  const { addMessage, messages } = useSessionMessages({ token, limit: 0 });
+  const { addMessage } = useSessionMessages({ token, limit: 0 });
 
-  const { saveSessionMemory } = useSessionMemory({ token, messages });
+  const { saveSessionMemory } = useSessionMemory({ token });
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
@@ -97,8 +97,6 @@ export default function App() {
 
     // for storing user messages in session storage
     socket.on("user-transcript", (data) => {
-      const transcriptTime = Date.now();
-      console.log(`📝 [FE] Transcript received at ${transcriptTime}`);
       if (!data?.text) return;
       addMessage({ role: "user", text: data.text });
     });
@@ -117,10 +115,6 @@ export default function App() {
       console.error("❌ AI Error:", message);
     });
 
-    // --- DISCONNECT/MEMORY HANDLING ---
-    // saveSessionMemory is provided by the useSessionMemory hook
-    socket.on("disconnect", saveSessionMemory);
-
     return () => {
       socket.off("ai-audio-chunk");
       socket.off("ai-interrupt");
@@ -131,10 +125,6 @@ export default function App() {
       socket.off("disconnect");
     };
   }, [token]);
-
-  useEffect(() => {
-    console.log("🧠 Session messages updated:", messages);
-  }, [messages]);
 
   if (isAuthorized === null)
     return (
