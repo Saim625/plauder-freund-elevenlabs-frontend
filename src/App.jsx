@@ -58,11 +58,32 @@ export default function App() {
     socket.off("ai-response-done");
     socket.off("ai-error");
 
+    let expectedIndex = 0;
+    let lastTs = Date.now();
+
     socket.on("ai-audio-chunk", (data) => {
       if (!data?.audio || !data?.contextId) {
         return;
       }
-      const { contextId, audio, isFinal } = data;
+      const { contextId, audio, index, isFinal } = data;
+
+      const now = Date.now();
+      const delay = now - lastTs;
+      lastTs = now;
+
+      // 🟩 Detailed log — helps detect missing chunks / jitter / small chunks
+      console.log(
+        `[RECV_CHUNK] ctx=${contextId} idx=${index} expected=${expectedIndex} size=${audio.length} delay=${delay}ms queue=${audioQueueRef.current.length}`
+      );
+
+      // Detect missing chunks on FE
+      if (index !== expectedIndex) {
+        console.warn(
+          `🚨 Missing chunk! Got=${index} Expected=${expectedIndex}`
+        );
+        expectedIndex = index; // realign to avoid flood errors
+      }
+      expectedIndex++;
 
       // If new context, clear old audio queue
       if (
@@ -78,11 +99,13 @@ export default function App() {
 
       // Reset state when stream finishes
       if (isFinal) {
+        console.log(`[STREAM_DONE] Waiting for playback to finish...`);
         const checkIfDone = () => {
           if (
             activeSourcesRef.current.length === 0 &&
             audioQueueRef.current.length === 0
           ) {
+            console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
             // ✅ Frontend tells backend: "I'm done playing audio!"
             socket.emit("ai-audio-complete", { contextId });
 
