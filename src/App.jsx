@@ -8,11 +8,19 @@ import { useTokenAuth } from "./hooks/useTokenAuth";
 import { useSessionMessages } from "./hooks/useSessionMessages";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useSessionMemory } from "./hooks/useSessionMemory";
+import { useGreeting } from "./hooks/useGreeting";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
 
   const { isAuthorized, token } = useTokenAuth();
+
+  const {
+    greetingText,
+    isLoading: greetingLoading,
+    hasGreeting,
+    decodeGreeting,
+  } = useGreeting({ token });
 
   // 1. Audio Playback Logic
   const {
@@ -23,6 +31,7 @@ export default function App() {
     playQueuedAudio,
     activeSourcesRef,
     nextStartTimeRef,
+    playGreeting,
   } = useAudioPlayer();
 
   const { connect, sendChunk, disconnect, socketRef } = useSocket({
@@ -39,7 +48,7 @@ export default function App() {
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
-    if (!token) {
+    if (!token || !greetingText) {
       return;
     }
     const socket = connect();
@@ -124,7 +133,7 @@ export default function App() {
       socket.off("ai-transcript");
       socket.off("disconnect");
     };
-  }, [token]);
+  }, [token, greetingText]);
 
   if (isAuthorized === null)
     return (
@@ -142,7 +151,6 @@ export default function App() {
     );
 
   const handleStart = async () => {
-    // 1. --- CRITICAL FIX START ---
     const audioContext = audioContextRef.current;
 
     // Create the context NOW, on click, if it doesn't exist.
@@ -150,30 +158,25 @@ export default function App() {
       audioContextRef.current = new AudioContext({ sampleRate: 24000 });
     }
 
-    // Resume the context IMMEDIATELY and SYNCHRONOUSLY
     try {
-      // Use the newly created or existing context
       await audioContextRef.current.resume();
-      console.log(
-        "✅ Playback AudioContext successfully resumed by user gesture."
-      );
     } catch (e) {
       console.error("❌ Failed to resume Playback AudioContext:", e);
-      // Handle failure (e.g., show a persistent button with a "Click to enable sound")
     }
-    // 1. --- CRITICAL FIX END ---
 
     try {
       setStage("starting");
 
-      // Now you can safely use 'await' for fetching and starting the mic
-      await playBlob(
-        new Blob([await fetch("/intro.mp3").then((r) => r.arrayBuffer())], {
-          type: "audio/mpeg",
-        })
-      );
-
-      // The start() call (which creates the MIC context) can proceed
+      if (hasGreeting) {
+        const audioBuffer = await decodeGreeting(audioContextRef.current);
+        await playGreeting(audioBuffer);
+      } else {
+        await playBlob(
+          new Blob([await fetch("/intro.mp3").then((r) => r.arrayBuffer())], {
+            type: "audio/mpeg",
+          })
+        );
+      }
       await start();
       setStage("chatting");
     } catch (err) {
@@ -188,7 +191,11 @@ export default function App() {
       <Avatar />
 
       {/* Start button appears only in idle stage */}
-      <StartButton stage={stage} onStart={handleStart} />
+      <StartButton
+        stage={stage}
+        onStart={handleStart}
+        greetingLoading={greetingLoading}
+      />
 
       {/* Denied state message */}
       {stage === "denied" && (

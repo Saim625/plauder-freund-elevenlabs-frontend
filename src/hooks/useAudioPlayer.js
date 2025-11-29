@@ -9,6 +9,28 @@ export function useAudioPlayer() {
   const activeSourcesRef = useRef([]); // ✅ NEW: Track active audio sources
   const MIN_BUFFER_CHUNKS = 1;
 
+  const playGreeting = (audioBuffer) => {
+    return new Promise((resolve) => {
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+
+      // 🆕 Store in activeSourcesRef for interruption!
+      activeSourcesRef.current.push(source);
+
+      source.onended = () => {
+        // Remove from active sources
+        const index = activeSourcesRef.current.indexOf(source);
+        if (index > -1) {
+          activeSourcesRef.current.splice(index, 1);
+        }
+        resolve(); // Greeting finished
+      };
+
+      source.start(0);
+    });
+  };
+
   // ✅ Initialize AudioContext ONCE
   useEffect(() => {
     return () => {
@@ -136,5 +158,6 @@ export function useAudioPlayer() {
     MIN_BUFFER_CHUNKS,
     stopAudioPlayback,
     playQueuedAudio,
+    playGreeting,
   };
 }
