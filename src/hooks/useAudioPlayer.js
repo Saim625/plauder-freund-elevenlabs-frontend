@@ -7,7 +7,7 @@ export function useAudioPlayer() {
   const nextStartTimeRef = useRef(0);
   const currentContextIdRef = useRef(null);
   const activeSourcesRef = useRef([]); // ✅ NEW: Track active audio sources
-  const MIN_BUFFER_CHUNKS = 1;
+  const MIN_BUFFER_CHUNKS = 2;
 
   const playGreeting = (audioBuffer) => {
     return new Promise((resolve) => {
