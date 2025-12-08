@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-export function useGreeting({ token }) {
+export function useGreeting({ token, isAdmin }) {
   const greetingBase64Ref = useRef(null); // ✅ Store base64, not AudioBuffer
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,6 +17,9 @@ export function useGreeting({ token }) {
     const fetchGreeting = async () => {
       try {
         setIsLoading(true);
+        if (isAdmin) {
+          return;
+        }
 
         const response = await fetch(
           `${import.meta.env.VITE_SERVER_URL}/api/generate-greeting`,

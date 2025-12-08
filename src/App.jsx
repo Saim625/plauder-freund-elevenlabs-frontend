@@ -21,7 +21,7 @@ export default function App() {
     isLoading: greetingLoading,
     hasGreeting,
     decodeGreeting,
-  } = useGreeting({ token });
+  } = useGreeting({ token, isAdmin });
 
   // 1. Audio Playback Logic
   const {
