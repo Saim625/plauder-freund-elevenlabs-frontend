@@ -9,11 +9,12 @@ import { useSessionMessages } from "./hooks/useSessionMessages";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useSessionMemory } from "./hooks/useSessionMemory";
 import { useGreeting } from "./hooks/useGreeting";
+import { AdminDashboard } from "./components/adminDashboard/adminDashboard";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
 
-  const { isAuthorized, token } = useTokenAuth();
+  const { isAuthorized, token, isAdmin } = useTokenAuth();
 
   const {
     greetingText,
@@ -48,7 +49,7 @@ export default function App() {
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
-    if (!token || !greetingText) {
+    if (!token || !greetingText || isAdmin) {
       return;
     }
     const socket = connect();
@@ -172,6 +173,10 @@ export default function App() {
         <p className="text-gray-700">Ungültiges oder fehlendes Token.</p>
       </div>
     );
+
+  if (isAdmin) {
+    return <AdminDashboard token={token} />;
+  }
 
   const handleStart = async () => {
     const audioContext = audioContextRef.current;

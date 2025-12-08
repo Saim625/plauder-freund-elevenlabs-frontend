@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export function useTokenAuth() {
   const [isAuthorized, setIsAuthorized] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false); // Default to false
   const [token, setToken] = useState(null);
 
   useEffect(() => {
@@ -21,11 +22,16 @@ export function useTokenAuth() {
     )
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setIsAuthorized(true);
-        else setIsAuthorized(false);
+        if (data.success) {
+          setIsAuthorized(true);
+          setIsAdmin(data.isAdmin || false);
+        } else {
+          setIsAuthorized(false);
+          setIsAdmin(false);
+        }
       })
       .catch(() => setIsAuthorized(false));
   }, []);
 
-  return { isAuthorized, token };
+  return { isAuthorized, token, isAdmin };
 }

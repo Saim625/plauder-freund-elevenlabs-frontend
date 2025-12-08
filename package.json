@@ -14,6 +14,7 @@
     "axios": "^1.13.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0",
     "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.13",
     "uuid": "^13.0.0"
