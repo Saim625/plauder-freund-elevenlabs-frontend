@@ -2,6 +2,7 @@ import { useState } from "react";
 import { UserManagement } from "./subComponents/UserManagement";
 import { MemoryEditor } from "./subComponents/MemoryEditor";
 import { PersonalityConfig } from "./subComponents/PersonalityConfig";
+import { AdminManagement } from "./subComponents/AdminManagement";
 
 export const AdminDashboard = ({ token }) => {
   const [activeTab, setActiveTab] = useState("users");
@@ -10,6 +11,7 @@ export const AdminDashboard = ({ token }) => {
     { id: "users", name: "User Management", icon: "👥" },
     { id: "memory", name: "Memory & Bio Editor", icon: "📝" },
     { id: "config", name: "Personality & Voice", icon: "🎭" },
+    { id: "admins", name: "Admin Management", icon: "👨🏻‍💻" },
   ];
 
   const renderContent = () => {
@@ -20,6 +22,8 @@ export const AdminDashboard = ({ token }) => {
         return <MemoryEditor />;
       case "config":
         return <PersonalityConfig />;
+      case "admins":
+        return <AdminManagement token={token} />;
       default:
         return <UserManagement />;
     }

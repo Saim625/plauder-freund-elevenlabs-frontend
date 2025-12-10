@@ -7,7 +7,7 @@ export function useGreeting({ token, isAdmin }) {
   const [greetingText, setGreetingText] = useState("");
 
   useEffect(() => {
-    if (!token) {
+    if (!token || isAdmin) {
       setIsLoading(false);
       return;
     }
@@ -17,9 +17,6 @@ export function useGreeting({ token, isAdmin }) {
     const fetchGreeting = async () => {
       try {
         setIsLoading(true);
-        if (isAdmin) {
-          return;
-        }
 
         const response = await fetch(
           `${import.meta.env.VITE_SERVER_URL}/api/generate-greeting`,
@@ -49,7 +46,7 @@ export function useGreeting({ token, isAdmin }) {
     };
 
     fetchGreeting();
-  }, [token]);
+  }, [token, isAdmin]);
 
   const decodeGreeting = async (audioContext) => {
     if (!greetingBase64Ref.current) {

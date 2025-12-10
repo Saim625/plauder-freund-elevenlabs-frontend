@@ -4,7 +4,7 @@ import DeleteConfirmModal from "./DeleteConfirmModal.jsx";
 import toast from "react-hot-toast";
 import InviteTokenModal from "./InviteTokenModal.jsx";
 
-const API_BASE_URL = "https://api.plauderfreund.de/api";
+const API_BASE_URL = import.meta.env.VITE_SERVER_URL + "/api";
 
 export const UserManagement = ({ token: adminToken }) => {
   const [tokens, setTokens] = useState([]);
