@@ -10,6 +10,7 @@ import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import { useSessionMemory } from "./hooks/useSessionMemory";
 import { useGreeting } from "./hooks/useGreeting";
 import { AdminDashboard } from "./components/adminDashboard/adminDashboard";
+import { LandingPage } from "./components/LandingPage";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
@@ -166,13 +167,7 @@ export default function App() {
       </div>
     );
 
-  if (!isAuthorized)
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-600">
-        <h1 className="text-2xl font-semibold mb-2">Zugriff verweigert</h1>
-        <p className="text-gray-700">Ungültiges oder fehlendes Token.</p>
-      </div>
-    );
+  if (!isAuthorized) return <LandingPage />;
 
   if (isAdmin) {
     return <AdminDashboard token={token} />;
