@@ -23,7 +23,7 @@ export function useTokenAuth() {
         }/api/auth/verify-admin-token?token=${tokenParam}`
       : `${
           import.meta.env.VITE_SERVER_URL
-        }/api/auth/verify-token?token=${tokenParam}`;
+        }/api/auth/verify-user-token?token=${tokenParam}`;
 
     fetch(route)
       .then((res) => res.json())
