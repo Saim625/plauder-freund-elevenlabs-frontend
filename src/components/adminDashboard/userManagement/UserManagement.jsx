@@ -1,8 +1,10 @@
 import axios from "axios";
 import React, { useState, useEffect, useCallback } from "react";
-import DeleteConfirmModal from "./DeleteConfirmModal.jsx";
+import DeleteConfirmModal from "../helperModal/DeleteConfirmModal.jsx";
 import toast from "react-hot-toast";
-import InviteTokenModal from "./InviteTokenModal.jsx";
+import InviteTokenModal from "./helpermodals/InviteTokenModal.jsx";
+import { useNavigate } from "react-router-dom";
+import UserSummaryModal from "./UserSummary.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL + "/api";
 
@@ -10,6 +12,10 @@ export const UserManagement = ({ token: adminToken }) => {
   const [tokens, setTokens] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const [openSummaryModal, setOpenSummaryModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState(null);
 
   // MODAL STATES
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
@@ -63,7 +69,8 @@ export const UserManagement = ({ token: adminToken }) => {
     setSelectedTokenId(id);
     setOpenDeleteModal(true);
   };
-
+  const message =
+    "Are you sure you want to delete this token? This action cannot be undone.";
   const confirmDelete = async () => {
     try {
       const url = `${API_BASE_URL}/token/${selectedTokenId}`;
@@ -103,10 +110,10 @@ export const UserManagement = ({ token: adminToken }) => {
     }
   };
 
-  // const handleViewData = (id) => {
-  //   toast.info(`Viewing data for token: ${id.substring(0, 8)}`);
-  // };
-
+  const handleViewData = (token) => {
+    setSelectedToken(token);
+    setOpenSummaryModal(true);
+  };
   const handleGenerateToken = async () => {
     try {
       const res = await axios.post(
@@ -194,6 +201,9 @@ export const UserManagement = ({ token: adminToken }) => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Summary
+                  </th>
                 </tr>
               </thead>
 
@@ -266,12 +276,6 @@ export const UserManagement = ({ token: adminToken }) => {
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <div className="flex gap-3">
-                          {/* <button
-                            onClick={() => handleViewData(t._id)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            View
-                          </button> */}
                           <button
                             onClick={() => askDelete(t._id)}
                             className="cursor-pointer text-red-600 hover:text-red-800 transition-colors"
@@ -279,6 +283,23 @@ export const UserManagement = ({ token: adminToken }) => {
                             Delete
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <button
+                          onClick={() => handleViewData(t.token)}
+                          className="
+                              bg-blue-600 
+                              text-white 
+                              px-3 
+                              py-2 
+                              rounded-md
+                              hover:bg-blue-700 
+                              transition-colors 
+                              cursor-pointer
+                            "
+                        >
+                          View summary
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -355,12 +376,12 @@ export const UserManagement = ({ token: adminToken }) => {
                   </div>
 
                   <div className="flex gap-3 pt-3 border-t border-gray-200">
-                    {/* <button
-                      onClick={() => handleViewData(t._id)}
-                      className="flex-1 text-blue-600 hover:text-blue-800 text-sm font-medium py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors"
+                    <button
+                      onClick={() => handleViewData(t.token)}
+                      className="flex-1 text-white text-sm font-medium py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors"
                     >
-                      View Data
-                    </button> */}
+                      View Summary
+                    </button>
                     <button
                       onClick={() => askDelete(t._id)}
                       className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium py-2 px-4 rounded-lg hover:bg-red-50 transition-colors"
@@ -375,10 +396,18 @@ export const UserManagement = ({ token: adminToken }) => {
         </div>
       )}
 
+      <UserSummaryModal
+        isOpen={openSummaryModal}
+        onClose={() => setOpenSummaryModal(false)}
+        userToken={selectedToken}
+        adminToken={adminToken}
+      />
+
       <DeleteConfirmModal
         isOpen={openDeleteModal}
         onClose={() => setOpenDeleteModal(false)}
         onConfirm={confirmDelete}
+        message={message}
       />
 
       <InviteTokenModal

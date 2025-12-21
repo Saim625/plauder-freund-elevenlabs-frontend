@@ -1,9 +1,9 @@
 import axios from "axios";
 import React, { useState, useEffect, useCallback } from "react";
-import DeleteConfirmModal from "./DeleteConfirmModal.jsx";
-import CreateAdminModal from "./CreateAdminModal.jsx";
+import DeleteConfirmModal from "../helperModal/DeleteConfirmModal.jsx";
+import CreateAdminModal from "./helperModals/CreateAdminModal.jsx";
 import toast from "react-hot-toast";
-import EditAdminTokenModal from "./EditAdminTokenModal.jsx";
+import EditAdminTokenModal from "./helperModals/EditAdminTokenModal.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL + "/api";
 
@@ -71,7 +71,8 @@ export const AdminManagement = ({ token: adminToken }) => {
     setSelectedAdminId(id);
     setOpenDeleteModal(true);
   };
-
+  const message =
+    "Are you sure you want to delete this admin? This action cannot be undone.";
   const confirmDelete = async () => {
     try {
       const url = `${API_BASE_URL}/admins/${selectedAdminId}`;
@@ -237,7 +238,7 @@ export const AdminManagement = ({ token: adminToken }) => {
 
                           <button
                             onClick={() => handleToggleStatus(admin)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer ${
                               admin.isActive ? "bg-green-500" : "bg-gray-300"
                             }`}
                           >
@@ -258,13 +259,13 @@ export const AdminManagement = ({ token: adminToken }) => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEditToken(admin)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium py-1 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium py-1 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors cursor-pointer"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => askDelete(admin._id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium py-1 px-3 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+                            className="text-red-600 hover:text-red-800 text-sm font-medium py-1 px-3 rounded-lg border border-red-200 hover:bg-red-50 transition-colors cursor-pointer"
                           >
                             Delete
                           </button>
@@ -375,6 +376,7 @@ export const AdminManagement = ({ token: adminToken }) => {
         isOpen={openDeleteModal}
         onClose={() => setOpenDeleteModal(false)}
         onConfirm={confirmDelete}
+        message={message}
       />
 
       <CreateAdminModal

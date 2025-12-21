@@ -1,15 +1,13 @@
 import { useState } from "react";
-import { UserManagement } from "./subComponents/UserManagement";
-import { MemoryEditor } from "./subComponents/MemoryEditor";
-import { PersonalityConfig } from "./subComponents/PersonalityConfig";
-import { AdminManagement } from "./subComponents/AdminManagement";
+import { AdminManagement } from "./adminManagement/AdminManagement";
+import { UserManagement } from "./userManagement/UserManagement";
+import { PersonalityConfig } from "../personalityConfig/PersonalityConfig";
 
 export const AdminDashboard = ({ token }) => {
   const [activeTab, setActiveTab] = useState("users");
 
   const tabs = [
     { id: "users", name: "User Management", icon: "👥" },
-    { id: "memory", name: "Memory & Bio Editor", icon: "📝" },
     { id: "config", name: "Personality & Voice", icon: "🎭" },
     { id: "admins", name: "Admin Management", icon: "👨🏻‍💻" },
   ];
@@ -18,10 +16,8 @@ export const AdminDashboard = ({ token }) => {
     switch (activeTab) {
       case "users":
         return <UserManagement token={token} />;
-      case "memory":
-        return <MemoryEditor />;
       case "config":
-        return <PersonalityConfig />;
+        return <PersonalityConfig token={token} />;
       case "admins":
         return <AdminManagement token={token} />;
       default:
@@ -53,7 +49,6 @@ export const AdminDashboard = ({ token }) => {
             </div>
           </div>
         </div>
-
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 bg-gray-50">
           <nav
@@ -80,7 +75,6 @@ export const AdminDashboard = ({ token }) => {
             ))}
           </nav>
         </div>
-
         {/* Content Area */}
         <div className="bg-white min-h-[60vh]">{renderContent()}</div>
       </div>

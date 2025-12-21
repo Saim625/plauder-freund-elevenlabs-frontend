@@ -1,6 +1,11 @@
 import React from "react";
 
-export default function DeleteConfirmModal({ isOpen, onClose, onConfirm }) {
+export default function DeleteConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+}) {
   if (!isOpen) return null;
 
   return (
@@ -34,10 +39,7 @@ export default function DeleteConfirmModal({ isOpen, onClose, onConfirm }) {
           <h2 className="text-xl font-bold text-gray-800">Confirm Delete</h2>
         </div>
 
-        <p className="mb-6 text-gray-600">
-          Are you sure you want to delete this token? This action cannot be
-          undone.
-        </p>
+        <p className="mb-6 text-gray-600">{message}</p>
 
         <div className="flex gap-3">
           <button
