@@ -8,14 +8,16 @@ export function useTokenAuth() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get("token");
+
     if (!tokenParam) {
       setIsAuthorized(false);
       return;
     }
+
     setToken(tokenParam);
 
-    // Determine route type: admin or user
-    const isAdminRoute = window.location.pathname.startsWith("/admin"); // or your admin route path
+    const isAdminRoute = window.location.pathname.startsWith("/admin");
+    setIsAdmin(isAdminRoute); // ✅ route type only
 
     const route = isAdminRoute
       ? `${
@@ -28,17 +30,10 @@ export function useTokenAuth() {
     fetch(route)
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) {
-          setIsAuthorized(true);
-          setIsAdmin(isAdminRoute); // If admin route, we know it's admin
-        } else {
-          setIsAuthorized(false);
-          setIsAdmin(false);
-        }
+        setIsAuthorized(!!data.success); // ✅ token validity only
       })
       .catch(() => {
         setIsAuthorized(false);
-        setIsAdmin(false);
       });
   }, []);
 

@@ -11,11 +11,20 @@ import { useSessionMemory } from "./hooks/useSessionMemory";
 import { useGreeting } from "./hooks/useGreeting";
 import { AdminDashboard } from "./components/adminDashboard/adminDashboard";
 import { LandingPage } from "./components/LandingPage";
+import { useAdminSession } from "./hooks/useAdminSession";
+import AdminPasswordScreen from "./components/AdminPasswordScreen";
+import ResetPasswordScreen from "./components/ResetPasswordScreen";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
 
+  if (window.location.pathname.startsWith("/admin/reset-password")) {
+    return <ResetPasswordScreen />;
+  }
+
   const { isAuthorized, token, isAdmin } = useTokenAuth();
+
+  const { isAdminAuthenticated } = useAdminSession();
 
   const {
     greetingText,
@@ -170,6 +179,14 @@ export default function App() {
   if (!isAuthorized) return <LandingPage />;
 
   if (isAdmin) {
+    if (!isAdminAuthenticated) {
+      return (
+        <AdminPasswordScreen
+          urlToken={token}
+          onSuccess={() => window.location.reload()}
+        />
+      );
+    }
     return <AdminDashboard token={token} />;
   }
 
