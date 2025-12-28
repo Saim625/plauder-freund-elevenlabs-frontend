@@ -14,9 +14,19 @@ import { LandingPage } from "./components/LandingPage";
 import { useAdminSession } from "./hooks/useAdminSession";
 import AdminPasswordScreen from "./components/AdminPasswordScreen";
 import ResetPasswordScreen from "./components/ResetPasswordScreen";
+import { disableWakeLock, enableWakeLock } from "./utils/wakeLock";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
+  const stageRef = useRef("idle");
+
+  useEffect(() => {
+    enableWakeLock();
+
+    return () => {
+      disableWakeLock();
+    };
+  }, []);
 
   if (window.location.pathname.startsWith("/admin/reset-password")) {
     return <ResetPasswordScreen />;
@@ -72,26 +82,46 @@ export default function App() {
     let expectedIndex = 0;
     let lastTs = Date.now();
 
+    socket.on("reengagement-needed", () => {
+      console.log("🟡 [FE] Backend requests re-engagement check");
+
+      console.log("📌 [FE] Stage:", stageRef.current);
+      console.log(
+        "📌 [FE] ActiveSources:",
+        activeSourcesRef.current.length,
+        "AudioQueue:",
+        audioQueueRef.current.length
+      );
+
+      if (stageRef.current !== "chatting") {
+        console.log("🚫 [FE] Not in chatting mode — ignoring re-engagement");
+        return;
+      }
+
+      const isAiPlaying =
+        activeSourcesRef.current.length > 0 || audioQueueRef.current.length > 0;
+
+      if (isAiPlaying) {
+        console.log("⏳ [FE] AI still speaking — ignoring re-engagement");
+        return;
+      }
+
+      console.log("🟢 [FE] Confirmed silence → emitting trigger-reengagement");
+      socket.emit("trigger-reengagement");
+    });
+
     socket.on("ai-audio-chunk", (data) => {
       if (!data?.audio || !data?.contextId) {
         return;
       }
-      const { contextId, audio, index, isFinal } = data;
+      const { contextId, audio, index } = data;
 
       const now = Date.now();
       const delay = now - lastTs;
       lastTs = now;
 
-      // 🟩 Detailed log — helps detect missing chunks / jitter / small chunks
-      console.log(
-        `[RECV_CHUNK] ctx=${contextId} idx=${index} expected=${expectedIndex} size=${audio.length} delay=${delay}ms queue=${audioQueueRef.current.length}`
-      );
-
       // Detect missing chunks on FE
       if (index !== expectedIndex) {
-        console.warn(
-          `🚨 Missing chunk! Got=${index} Expected=${expectedIndex}`
-        );
         expectedIndex = index; // realign to avoid flood errors
       }
       expectedIndex++;
@@ -109,8 +139,11 @@ export default function App() {
       playQueuedAudio();
 
       // Reset state when stream finishes
-      if (isFinal) {
-        console.log(`[STREAM_DONE] Waiting for playback to finish...`);
+      socket.on("ai-audio-complete", (data) => {
+        const { contextId } = data;
+        console.log(`✅ [AUDIO COMPLETE] Received for context: ${contextId}`);
+
+        // Reset state when stream finishes
         const checkIfDone = () => {
           if (
             activeSourcesRef.current.length === 0 &&
@@ -118,19 +151,21 @@ export default function App() {
           ) {
             console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
             // ✅ Frontend tells backend: "I'm done playing audio!"
-            socket.emit("ai-audio-complete", { contextId });
+            socket.emit("ai-audio-done", { contextId });
 
             // Clean up frontend state
             audioQueueRef.current = [];
             nextStartTimeRef.current = 0;
             currentContextIdRef.current = null;
-            isPlayingRef.current = false;
           } else {
+            console.log(
+              `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`
+            );
             setTimeout(checkIfDone, 100);
           }
         };
         setTimeout(checkIfDone, 200);
-      }
+      });
     });
 
     // ✅ NEW: Handle interruption signal from backend
@@ -159,6 +194,7 @@ export default function App() {
     });
 
     return () => {
+      socket.off("reengagement-needed");
       socket.off("ai-audio-chunk");
       socket.off("ai-interrupt");
       socket.off("ai-response-done");
@@ -206,6 +242,7 @@ export default function App() {
 
     try {
       setStage("starting");
+      stageRef.current = "starting";
 
       if (hasGreeting) {
         const audioBuffer = await decodeGreeting(audioContextRef.current);
@@ -219,9 +256,12 @@ export default function App() {
       }
       await start();
       setStage("chatting");
+      stageRef.current = "chatting";
+      socketRef.current.emit("conversation-started");
     } catch (err) {
       console.error("Mic denied:", err);
       setStage("denied");
+      stageRef.current = "denied";
     }
   };
 
