@@ -5,9 +5,7 @@ import { useMicrophone } from "./hooks/useMicrophone";
 import { useSocket } from "./hooks/useSocket";
 import { playBlob } from "./utils/audioHelpers";
 import { useTokenAuth } from "./hooks/useTokenAuth";
-import { useSessionMessages } from "./hooks/useSessionMessages";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
-import { useSessionMemory } from "./hooks/useSessionMemory";
 import { useGreeting } from "./hooks/useGreeting";
 import { AdminDashboard } from "./components/adminDashboard/adminDashboard";
 import { LandingPage } from "./components/LandingPage";
@@ -62,10 +60,6 @@ export default function App() {
   const { start, stop } = useMicrophone({
     onChunk: sendChunk,
   });
-
-  const { addMessage } = useSessionMessages({ token, limit: 0 });
-
-  const { saveSessionMemory } = useSessionMemory({ token });
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
@@ -172,19 +166,6 @@ export default function App() {
     socket.on("ai-interrupt", () => {
       stopAudioPlayback();
     });
-
-    // for storing user messages in session storage
-    socket.on("user-transcript", (data) => {
-      if (!data?.text) return;
-      addMessage({ role: "user", text: data.text });
-    });
-
-    // for storing AI response in session storage
-    socket.on("ai-transcript", (data) => {
-      if (!data?.text) return;
-      addMessage({ role: "assistant", text: data.text });
-    });
-
     socket.on("ai-response-done", (data) => {
       console.log("✅ AI response complete:", data);
     });

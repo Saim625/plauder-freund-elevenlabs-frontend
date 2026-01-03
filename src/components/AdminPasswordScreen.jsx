@@ -77,7 +77,7 @@ export default function AdminPasswordScreen({ urlToken, onSuccess }) {
       toast.info("Password reset link sent! Check your email.");
       setIsForgotMode(false); // back to login
     } catch {
-      setError("Server error");
+      setError("Server Error");
     } finally {
       setLoading(false);
     }

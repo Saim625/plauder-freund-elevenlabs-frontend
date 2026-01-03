@@ -43,8 +43,8 @@ export default function ResetPasswordScreen() {
 
       setSuccess("Password reset successful! You can now login.");
       setPassword("");
-    } catch {
-      setError("Server error");
+    } catch (err) {
+      setError("Server Error");
     } finally {
       setLoading(false);
     }
