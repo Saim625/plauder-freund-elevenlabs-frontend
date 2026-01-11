@@ -132,35 +132,36 @@ export default function App() {
       currentContextIdRef.current = contextId;
       audioQueueRef.current.push(audio);
       playQueuedAudio();
+    });
+
+    // Reset state when stream finishes
+    socket.on("ai-audio-complete", (data) => {
+      console.log("ai-audio-complete", data);
+      const { contextId } = data;
+      console.log(`✅ [AUDIO COMPLETE] Received for context: ${contextId}`);
 
       // Reset state when stream finishes
-      socket.on("ai-audio-complete", (data) => {
-        const { contextId } = data;
-        console.log(`✅ [AUDIO COMPLETE] Received for context: ${contextId}`);
+      const checkIfDone = () => {
+        if (
+          activeSourcesRef.current.length === 0 &&
+          audioQueueRef.current.length === 0
+        ) {
+          console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
+          // ✅ Frontend tells backend: "I'm done playing audio!"
+          socket.emit("ai-audio-done", { contextId });
 
-        // Reset state when stream finishes
-        const checkIfDone = () => {
-          if (
-            activeSourcesRef.current.length === 0 &&
-            audioQueueRef.current.length === 0
-          ) {
-            console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
-            // ✅ Frontend tells backend: "I'm done playing audio!"
-            socket.emit("ai-audio-done", { contextId });
-
-            // Clean up frontend state
-            audioQueueRef.current = [];
-            nextStartTimeRef.current = 0;
-            currentContextIdRef.current = null;
-          } else {
-            console.log(
-              `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`
-            );
-            setTimeout(checkIfDone, 100);
-          }
-        };
-        setTimeout(checkIfDone, 200);
-      });
+          // Clean up frontend state
+          audioQueueRef.current = [];
+          nextStartTimeRef.current = 0;
+          currentContextIdRef.current = null;
+        } else {
+          console.log(
+            `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`
+          );
+          setTimeout(checkIfDone, 100);
+        }
+      };
+      setTimeout(checkIfDone, 200);
     });
 
     // ✅ NEW: Handle interruption signal from backend
