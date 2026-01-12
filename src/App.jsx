@@ -66,27 +66,23 @@ export default function App() {
     if (!token || !greetingText || isAdmin) {
       return;
     }
+
     const socket = connect();
 
+    // Clear all old listeners
     socket.off("ai-audio-chunk");
     socket.off("ai-audio-complete");
-    socket.off("ai-interrupt"); // ✅ NEW
+    socket.off("ai-interrupt");
     socket.off("ai-response-done");
     socket.off("ai-error");
+    socket.off("reengagement-needed");
 
     let expectedIndex = 0;
     let lastTs = Date.now();
+    const processedContexts = new Set(); // 🔥 Track processed contexts
 
     socket.on("reengagement-needed", () => {
       console.log("🟡 [FE] Backend requests re-engagement check");
-
-      console.log("📌 [FE] Stage:", stageRef.current);
-      console.log(
-        "📌 [FE] ActiveSources:",
-        activeSourcesRef.current.length,
-        "AudioQueue:",
-        audioQueueRef.current.length
-      );
 
       if (stageRef.current !== "chatting") {
         console.log("🚫 [FE] Not in chatting mode — ignoring re-engagement");
@@ -112,21 +108,22 @@ export default function App() {
       const { contextId, audio, index } = data;
 
       const now = Date.now();
-      const delay = now - lastTs;
       lastTs = now;
 
-      // Detect missing chunks on FE
       if (index !== expectedIndex) {
-        expectedIndex = index; // realign to avoid flood errors
+        console.warn(
+          `⚠️ Missing chunk! Expected ${expectedIndex}, got ${index}`
+        );
+        expectedIndex = index;
       }
       expectedIndex++;
 
-      // If new context, clear old audio queue
       if (
         currentContextIdRef.current &&
         currentContextIdRef.current !== contextId
       ) {
-        stopAudioPlayback(); // ✅ Use stop function
+        console.log(`🔄 New context detected, stopping old playback`);
+        stopAudioPlayback();
       }
 
       currentContextIdRef.current = contextId;
@@ -134,26 +131,48 @@ export default function App() {
       playQueuedAudio();
     });
 
-    // Reset state when stream finishes
     socket.on("ai-audio-complete", (data) => {
-      console.log("ai-audio-complete", data);
       const { contextId } = data;
+
+      // 🔥 FIX: Handle null/unknown contextId
+      if (!contextId || contextId === "unknown") {
+        console.warn(
+          `⚠️ [AUDIO COMPLETE] Received null/unknown contextId, skipping`
+        );
+        return;
+      }
+
       console.log(`✅ [AUDIO COMPLETE] Received for context: ${contextId}`);
 
-      // Reset state when stream finishes
+      // 🔥 FIX: Prevent duplicate processing
+      if (processedContexts.has(contextId)) {
+        console.log(
+          `⚠️ Already processed context ${contextId}, ignoring duplicate`
+        );
+        return;
+      }
+
+      processedContexts.add(contextId);
+
       const checkIfDone = () => {
         if (
           activeSourcesRef.current.length === 0 &&
           audioQueueRef.current.length === 0
         ) {
           console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
-          // ✅ Frontend tells backend: "I'm done playing audio!"
           socket.emit("ai-audio-done", { contextId });
 
-          // Clean up frontend state
           audioQueueRef.current = [];
           nextStartTimeRef.current = 0;
           currentContextIdRef.current = null;
+          expectedIndex = 0;
+
+          // 🔥 Clean up old contexts (keep last 10)
+          if (processedContexts.size > 10) {
+            const arr = Array.from(processedContexts);
+            processedContexts.clear();
+            arr.slice(-10).forEach((ctx) => processedContexts.add(ctx));
+          }
         } else {
           console.log(
             `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`
@@ -161,13 +180,15 @@ export default function App() {
           setTimeout(checkIfDone, 100);
         }
       };
+
       setTimeout(checkIfDone, 200);
     });
 
-    // ✅ NEW: Handle interruption signal from backend
     socket.on("ai-interrupt", () => {
+      console.log("🛑 [AI INTERRUPT] Stopping playback");
       stopAudioPlayback();
     });
+
     socket.on("ai-response-done", (data) => {
       console.log("✅ AI response complete:", data);
     });
@@ -183,9 +204,6 @@ export default function App() {
       socket.off("ai-interrupt");
       socket.off("ai-response-done");
       socket.off("ai-error");
-      socket.off("user-transcript");
-      socket.off("ai-transcript");
-      socket.off("disconnect");
     };
   }, [token, greetingText]);
 
