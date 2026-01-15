@@ -1,49 +1,43 @@
 let wakeLock = null;
 
-/**
- * Enable screen wake lock (prevents phone from sleeping)
- */
 export async function enableWakeLock() {
+  // 1. Safety check
+  if (!("wakeLock" in navigator)) {
+    console.warn("Wake Lock API not supported");
+    return;
+  }
+
   try {
-    if ("wakeLock" in navigator) {
-      wakeLock = await navigator.wakeLock.request("screen");
+    // 2. Request the lock
+    wakeLock = await navigator.wakeLock.request("screen");
+    console.log("🔓 Wake Lock enabled");
 
-      console.log("🔓 Wake Lock enabled");
-
-      wakeLock.addEventListener("release", () => {
-        console.log("🔒 Wake Lock released");
-      });
-
-      // Re-acquire wake lock if tab becomes active again
-      document.addEventListener("visibilitychange", async () => {
-        if (document.visibilityState === "visible" && wakeLock === null) {
-          try {
-            wakeLock = await navigator.wakeLock.request("screen");
-            console.log("🔓 Wake Lock re-enabled");
-          } catch (err) {
-            console.error("Wake Lock re-acquire failed:", err);
-          }
-        }
-      });
-    } else {
-      console.warn("Wake Lock API not supported on this browser");
-    }
+    // 3. LISTEN for system release (This is the key fix)
+    wakeLock.addEventListener("release", () => {
+      console.log("🔒 Wake Lock was released by the system");
+      wakeLock = null; // Clear it so we know we need to re-request it later
+    });
   } catch (err) {
-    console.error("Wake Lock failed:", err);
+    console.error(`❌ Wake Lock failed: ${err.name}, ${err.message}`);
   }
 }
 
+// 4. Re-acquire logic (Fixed)
+document.addEventListener("visibilitychange", async () => {
+  if (wakeLock === null && document.visibilityState === "visible") {
+    // We only re-enable if the user had it active before leaving
+    console.log("♻️ Re-acquiring Wake Lock...");
+    await enableWakeLock();
+  }
+});
+
 /**
- * Disable wake lock
+ * Disable wake lock (Manual)
  */
 export async function disableWakeLock() {
-  try {
-    if (wakeLock) {
-      await wakeLock.release();
-      wakeLock = null;
-      console.log("🔒 Wake Lock disabled");
-    }
-  } catch (err) {
-    console.error("Failed to release Wake Lock:", err);
+  if (wakeLock) {
+    await wakeLock.release();
+    wakeLock = null;
+    console.log("🔒 Wake Lock disabled manually");
   }
 }

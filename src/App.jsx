@@ -19,9 +19,8 @@ export default function App() {
   const stageRef = useRef("idle");
 
   useEffect(() => {
-    enableWakeLock();
-
     return () => {
+      // We still want to release it if the component unmounts
       disableWakeLock();
     };
   }, []);
@@ -238,6 +237,8 @@ export default function App() {
 
     try {
       await audioContextRef.current.resume();
+
+      await enableWakeLock();
     } catch (e) {
       console.error("❌ Failed to resume Playback AudioContext:", e);
     }
