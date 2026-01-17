@@ -89,7 +89,10 @@ const PersonalityConfigModal = ({
         reengageAfterSilence: form.reengageAfterSilence,
         expertise: form.expertiseMode,
         traits: form.personalityTraits,
-        conversationGuidelines: form.conversationGuidelines,
+        conversationGuidelines: (form.conversationGuidelines || [])
+          .map((line) => line.trim())
+          .filter(Boolean),
+        s,
       };
 
       await axios.put(
@@ -297,9 +300,7 @@ const PersonalityConfigModal = ({
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        conversationGuidelines: e.target.value
-                          .split("\n")
-                          .filter((line) => line.trim()),
+                        conversationGuidelines: e.target.value.split("\n"),
                       })
                     }
                     rows={4}
