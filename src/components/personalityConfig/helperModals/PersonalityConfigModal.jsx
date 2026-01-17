@@ -92,7 +92,6 @@ const PersonalityConfigModal = ({
         conversationGuidelines: (form.conversationGuidelines || [])
           .map((line) => line.trim())
           .filter(Boolean),
-        s,
       };
 
       await axios.put(
