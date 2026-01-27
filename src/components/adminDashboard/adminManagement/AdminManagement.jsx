@@ -42,7 +42,6 @@ export const AdminManagement = ({ token: adminToken }) => {
       const res = await axios.get(`${API_BASE_URL}/admins`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
-
       if (res.data.success && Array.isArray(res.data.admins)) {
         setAdmins(res.data.admins);
       } else {
@@ -98,11 +97,11 @@ export const AdminManagement = ({ token: adminToken }) => {
     }
 
     try {
-      const url = `${API_BASE_URL}/admins/${admin._id}/toggle-status`; // create this route in backend
+      const url = `${API_BASE_URL}/admins/${admin.id}/toggle-status`; // create this route in backend
       const res = await axios.put(
         url,
         {},
-        { headers: { Authorization: `Bearer ${adminToken}` } }
+        { headers: { Authorization: `Bearer ${adminToken}` } },
       );
       toast.success(res.data.message || "Status updated");
       fetchAdmins();
@@ -215,7 +214,7 @@ export const AdminManagement = ({ token: adminToken }) => {
                 ) : (
                   admins.map((admin) => (
                     <tr
-                      key={admin._id}
+                      key={admin.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4 font-mono text-sm text-gray-900">
@@ -264,7 +263,7 @@ export const AdminManagement = ({ token: adminToken }) => {
                             Edit
                           </button>
                           <button
-                            onClick={() => askDelete(admin._id)}
+                            onClick={() => askDelete(admin.id)}
                             className="text-red-600 hover:text-red-800 text-sm font-medium py-1 px-3 rounded-lg border border-red-200 hover:bg-red-50 transition-colors cursor-pointer"
                           >
                             Delete
@@ -304,7 +303,7 @@ export const AdminManagement = ({ token: adminToken }) => {
               </div>
             ) : (
               admins.map((admin) => (
-                <div key={admin._id} className="p-4">
+                <div key={admin.id} className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 mb-1">Token</p>
@@ -360,7 +359,7 @@ export const AdminManagement = ({ token: adminToken }) => {
                       Edit Token
                     </button>
                     <button
-                      onClick={() => askDelete(admin._id)}
+                      onClick={() => askDelete(admin.id)}
                       className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium py-2 px-4 rounded-lg hover:bg-red-50 transition-colors border border-red-200"
                     >
                       Delete

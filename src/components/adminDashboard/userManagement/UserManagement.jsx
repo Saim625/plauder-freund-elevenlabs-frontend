@@ -98,7 +98,7 @@ export const UserManagement = ({ token: adminToken }) => {
         {},
         {
           headers: { Authorization: `Bearer ${adminToken}` },
-        }
+        },
       );
       toast.success(res.data.message || "Status updated");
       fetchTokenDetails();
@@ -123,7 +123,7 @@ export const UserManagement = ({ token: adminToken }) => {
           headers: {
             Authorization: `Bearer ${adminToken}`,
           },
-        }
+        },
       );
 
       if (res.data.success) {
@@ -238,7 +238,7 @@ export const UserManagement = ({ token: adminToken }) => {
                 ) : (
                   tokens.map((t) => (
                     <tr
-                      key={t._id}
+                      key={t.id}
                       className={`hover:bg-gray-50 transition-colors ${
                         !t.isActive ? "bg-gray-50" : ""
                       }`}
@@ -261,7 +261,7 @@ export const UserManagement = ({ token: adminToken }) => {
                             {t.isActive ? "Active" : "Inactive"}
                           </span>
                           <button
-                            onClick={() => handleToggleStatus(t._id)}
+                            onClick={() => handleToggleStatus(t.id)}
                             className={`cursor-pointer relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                               t.isActive ? "bg-green-500" : "bg-gray-300"
                             }`}
@@ -277,7 +277,7 @@ export const UserManagement = ({ token: adminToken }) => {
                       <td className="px-6 py-4 text-sm font-medium">
                         <div className="flex gap-3">
                           <button
-                            onClick={() => askDelete(t._id)}
+                            onClick={() => askDelete(t.id)}
                             className="cursor-pointer text-red-600 hover:text-red-800 transition-colors"
                           >
                             Delete
@@ -335,7 +335,7 @@ export const UserManagement = ({ token: adminToken }) => {
             ) : (
               tokens.map((t) => (
                 <div
-                  key={t._id}
+                  key={t.id}
                   className={`p-4 ${!t.isActive ? "bg-gray-50" : ""}`}
                 >
                   <div className="flex justify-between items-center mb-3">
@@ -354,7 +354,7 @@ export const UserManagement = ({ token: adminToken }) => {
                         {t.isActive ? "Active" : "Inactive"}
                       </span>
                       <button
-                        onClick={() => handleToggleStatus(t._id)}
+                        onClick={() => handleToggleStatus(t.id)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                           t.isActive ? "bg-green-500" : "bg-gray-300"
                         }`}
@@ -383,7 +383,7 @@ export const UserManagement = ({ token: adminToken }) => {
                       View Summary
                     </button>
                     <button
-                      onClick={() => askDelete(t._id)}
+                      onClick={() => askDelete(t.id)}
                       className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium py-2 px-4 rounded-lg hover:bg-red-50 transition-colors"
                     >
                       Delete

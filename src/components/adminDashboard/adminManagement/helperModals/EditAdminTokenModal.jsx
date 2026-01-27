@@ -27,9 +27,9 @@ const EditAdminTokenModal = ({
     setLoading(true);
     try {
       const res = await axios.put(
-        `${API_BASE_URL}/admins/${adminData._id}/edit-token`,
+        `${API_BASE_URL}/admins/${adminData.id}/edit-token`,
         { newToken },
-        { headers: { Authorization: `Bearer ${adminToken}` } }
+        { headers: { Authorization: `Bearer ${adminToken}` } },
       );
 
       if (res.data.success) {
