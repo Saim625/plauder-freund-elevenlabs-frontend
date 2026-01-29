@@ -78,6 +78,7 @@ export default function App() {
 
     let expectedIndex = 0;
     let lastTs = Date.now();
+    let chunkCounter = 0; // +++
     const processedContexts = new Set(); // 🔥 Track processed contexts
 
     socket.on("reengagement-needed", () => {
@@ -107,12 +108,27 @@ export default function App() {
       const { contextId, audio, index } = data;
 
       const now = Date.now();
+      const gapMs = now - lastTs; //+++
       lastTs = now;
 
+      chunkCounter++; //+++
+
+      console.log("🎧 Audio Chunk Received", {
+        chunkCounter,
+        indexFromBE: index,
+        expectedIndex,
+        gapMs, // ⬅ key for production debugging
+        chunkSizeBytes: audio.byteLength,
+        contextId,
+        queueLength: audioQueueRef.current.length,
+      }); //+++
+
       if (index !== expectedIndex) {
-        console.warn(
-          `⚠️ Missing chunk! Expected ${expectedIndex}, got ${index}`
-        );
+        console.warn("⚠️ Chunk sequence issue", {
+          expectedIndex,
+          receivedIndex: index,
+          gapMs,
+        });
         expectedIndex = index;
       }
       expectedIndex++;
@@ -136,7 +152,7 @@ export default function App() {
       // 🔥 FIX: Handle null/unknown contextId
       if (!contextId || contextId === "unknown") {
         console.warn(
-          `⚠️ [AUDIO COMPLETE] Received null/unknown contextId, skipping`
+          `⚠️ [AUDIO COMPLETE] Received null/unknown contextId, skipping`,
         );
         return;
       }
@@ -146,7 +162,7 @@ export default function App() {
       // 🔥 FIX: Prevent duplicate processing
       if (processedContexts.has(contextId)) {
         console.log(
-          `⚠️ Already processed context ${contextId}, ignoring duplicate`
+          `⚠️ Already processed context ${contextId}, ignoring duplicate`,
         );
         return;
       }
@@ -174,7 +190,7 @@ export default function App() {
           }
         } else {
           console.log(
-            `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`
+            `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`,
           );
           setTimeout(checkIfDone, 100);
         }
@@ -254,7 +270,7 @@ export default function App() {
         await playBlob(
           new Blob([await fetch("/intro.mp3").then((r) => r.arrayBuffer())], {
             type: "audio/mpeg",
-          })
+          }),
         );
       }
       await start();
