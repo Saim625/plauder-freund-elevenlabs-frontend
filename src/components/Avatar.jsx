@@ -7,7 +7,7 @@ export default function Avatar() {
 
         {/* Avatar image with transparent background */}
         <img
-          src="/face.png"
+          src="/image__4_-removebg-preview.png"
           alt="Avatar"
           className="relative z-10 w-full h-full object-contain"
           style={{ filter: "drop-shadow(0 0 10px rgba(0,0,0,0.1))" }}

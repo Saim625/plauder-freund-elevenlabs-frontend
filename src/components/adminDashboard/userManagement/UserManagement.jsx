@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import InviteTokenModal from "./helpermodals/InviteTokenModal.jsx";
 import { useNavigate } from "react-router-dom";
 import UserSummaryModal from "./UserSummary.jsx";
+import NumberAssignModal from "./helpermodals/NumberAssignModal.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL + "/api";
 
@@ -20,6 +21,9 @@ export const UserManagement = ({ token: adminToken }) => {
   // MODAL STATES
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedTokenId, setSelectedTokenId] = useState(null);
+
+  const [numberModalOpen, setNumberModalOpen] = useState(false);
+  const [selectedTokenForNumber, setSelectedTokenForNumber] = useState(null);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteData, setInviteData] = useState({ token: "", inviteUrl: "" });
@@ -140,6 +144,11 @@ export const UserManagement = ({ token: adminToken }) => {
     }
   };
 
+  const handleAssignNumber = (token) => {
+    setSelectedTokenForNumber(token);
+    setNumberModalOpen(true);
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -197,6 +206,9 @@ export const UserManagement = ({ token: adminToken }) => {
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Number
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
@@ -274,8 +286,23 @@ export const UserManagement = ({ token: adminToken }) => {
                           </button>
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {t.number ? (
+                          <span className="font-mono">{t.number}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            Not assigned
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         <div className="flex gap-3">
+                          <button
+                            onClick={() => handleAssignNumber(t)}
+                            className="cursor-pointer text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            {t.number ? "Edit Number" : "Assign Number"}
+                          </button>
                           <button
                             onClick={() => askDelete(t.id)}
                             className="cursor-pointer text-red-600 hover:text-red-800 transition-colors"
@@ -375,7 +402,26 @@ export const UserManagement = ({ token: adminToken }) => {
                     </p>
                   </div>
 
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-1">Number</p>
+                    <p className="text-sm text-gray-700">
+                      {t.number ? (
+                        <span className="font-mono">{t.number}</span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Not assigned
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
                   <div className="flex gap-3 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => handleAssignNumber(t)}
+                      className="flex-1 text-white text-sm font-medium py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 transition-colors"
+                    >
+                      {t.number ? "Edit #" : "Assign #"}
+                    </button>
                     <button
                       onClick={() => handleViewData(t.token)}
                       className="flex-1 text-white text-sm font-medium py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -415,6 +461,14 @@ export const UserManagement = ({ token: adminToken }) => {
         onClose={() => setInviteModalOpen(false)}
         token={inviteData.token}
         inviteUrl={inviteData.inviteUrl}
+      />
+
+      <NumberAssignModal
+        isOpen={numberModalOpen}
+        onClose={() => setNumberModalOpen(false)}
+        tokenData={selectedTokenForNumber}
+        adminToken={adminToken}
+        onSuccess={fetchTokenDetails}
       />
     </div>
   );

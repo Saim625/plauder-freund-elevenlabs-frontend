@@ -42,7 +42,7 @@ const PersonalityConfigModal = ({
           `${API_BASE}/user/personality/${userToken}`,
           {
             headers: { Authorization: `Bearer ${adminToken}` },
-          }
+          },
         );
 
         if (res.data.success && res.data.personality) {
@@ -56,11 +56,11 @@ const PersonalityConfigModal = ({
             reminderOffers: personality.reminderOffers ?? true,
             reengageAfterSilence: personality.reengageAfterSilence ?? true,
             expertiseMode: personality.expertise || "general",
-            personalityTraits: personality.traits || {
-              calm: true,
-              humorous: false,
-              supportive: true,
-              direct: false,
+            personalityTraits: {
+              calm: personality.calm ?? true,
+              humorous: personality.humorous ?? false,
+              supportive: personality.supportive ?? true,
+              direct: personality.direct ?? false,
             },
             conversationGuidelines: personality.conversationGuidelines || [],
           });
@@ -82,13 +82,16 @@ const PersonalityConfigModal = ({
 
       const payload = {
         voiceId: form.voiceId,
-        speakingSpeed: form.speakingSpeed || 1,
+        speakingSpeed: form.speakingSpeed || "normal",
         empathyLevel: form.empathyLevel,
         activePrompting: form.activePrompting,
         reminderOffers: form.reminderOffers,
         reengageAfterSilence: form.reengageAfterSilence,
         expertise: form.expertiseMode,
-        traits: form.personalityTraits,
+        calm: form.personalityTraits.calm,
+        humorous: form.personalityTraits.humorous,
+        supportive: form.personalityTraits.supportive,
+        direct: form.personalityTraits.direct,
         conversationGuidelines: (form.conversationGuidelines || [])
           .map((line) => line.trim())
           .filter(Boolean),
@@ -99,7 +102,7 @@ const PersonalityConfigModal = ({
         payload,
         {
           headers: { Authorization: `Bearer ${adminToken}` },
-        }
+        },
       );
 
       toast.success("Personality updated successfully");
@@ -120,7 +123,7 @@ const PersonalityConfigModal = ({
         {},
         {
           headers: { Authorization: `Bearer ${adminToken}` },
-        }
+        },
       );
 
       toast.success("Personality reset to default");
