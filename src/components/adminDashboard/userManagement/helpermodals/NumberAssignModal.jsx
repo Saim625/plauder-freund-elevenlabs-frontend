@@ -79,7 +79,7 @@ const NumberAssignModal = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number (11-12 digits)
+                Phone Number (10-15 digits)
               </label>
               <input
                 type="text"
@@ -91,7 +91,7 @@ const NumberAssignModal = ({
                 maxLength={12}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter an 11 or 12 digit phone number
+                Enter an 10 or 15 digit phone number
               </p>
             </div>
 
