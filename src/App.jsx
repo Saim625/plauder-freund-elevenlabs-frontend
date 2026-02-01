@@ -105,7 +105,7 @@ export default function App() {
       if (!data?.audio || !data?.contextId) {
         return;
       }
-      const { contextId, audio, index } = data;
+      const { contextId, audio, index, sentAt } = data;
 
       const now = Date.now();
       const gapMs = now - lastTs; //+++
@@ -122,6 +122,13 @@ export default function App() {
         contextId,
         queueLength: audioQueueRef.current.length,
       }); //+++
+
+      console.log("🎧 Chunk timing", {
+        index,
+        sentAt,
+        receivedAt: Date.now(),
+        transportDelayMs: Date.now() - sentAt,
+      });
 
       if (index !== expectedIndex) {
         console.warn("⚠️ Chunk sequence issue", {
