@@ -38,8 +38,13 @@ export function useSocket({ token }) {
         console.log(`✅ Connected to server (id: ${socket.id})`);
 
         if (token) {
-          console.log("🎟️ Sending token for realtime session:", token);
-          socket.emit("start-realtime", { token });
+          const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          console.log(
+            "🎟️ Sending token for realtime session:",
+            token,
+            userTimeZone,
+          );
+          socket.emit("start-realtime", { token, timezone: userTimeZone });
         } else {
           console.warn("⚠️ No token provided — skipping start-realtime emit");
         }
@@ -55,7 +60,7 @@ export function useSocket({ token }) {
 
       return socket;
     },
-    [token]
+    [token],
   );
 
   const disconnect = useCallback(() => {

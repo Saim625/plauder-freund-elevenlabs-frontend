@@ -14,14 +14,35 @@ export const PersonalityConfig = ({ token: adminToken }) => {
   const fetchConfigs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE_URL}/user/personality/tokens`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
 
-      setData({
-        tokens: res.data.tokens || [],
-        count: res.data.count || 0,
-      });
+      // Fetch personality configs and token details in parallel
+      const [configRes, detailsRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/user/personality/tokens`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }),
+        axios.get(`${API_BASE_URL}/getTokenDetails?token=${adminToken}`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }),
+      ]);
+
+      const tokens = configRes.data.tokens || [];
+      const tokenDetails = detailsRes.data?.tokens || detailsRes.data || [];
+
+      // Build a map of token → number for quick lookup
+      const numberMap = {};
+      if (Array.isArray(tokenDetails)) {
+        tokenDetails.forEach((t) => {
+          if (t.token) numberMap[t.token] = t.number || null;
+        });
+      }
+
+      // Merge number into each config token
+      const merged = tokens.map((t) => ({
+        ...t,
+        number: numberMap[t.token] || null,
+      }));
+
+      setData({ tokens: merged, count: configRes.data.count || 0 });
     } catch (err) {
       toast.error("Failed to load personality configs");
       console.error("Fetch Configs Error:", err);
@@ -31,15 +52,12 @@ export const PersonalityConfig = ({ token: adminToken }) => {
   };
 
   useEffect(() => {
-    if (adminToken) {
-      fetchConfigs();
-    }
+    if (adminToken) fetchConfigs();
   }, [adminToken]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "Never";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
+    return new Date(dateStr).toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -109,7 +127,7 @@ export const PersonalityConfig = ({ token: adminToken }) => {
           </p>
           <button
             onClick={fetchConfigs}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-blue-600 hover:text-blue-700 font.medium"
           >
             Refresh List
           </button>
@@ -123,6 +141,9 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     User Token
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Number
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Last Updated
@@ -142,6 +163,17 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                       <span className="font-mono text-sm text-gray-900">
                         {t.token.substring(0, 16)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {t.number ? (
+                        <span className="font-mono text-gray-900">
+                          {t.number}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Not assigned
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(t.lastModified)}
@@ -169,6 +201,16 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                   <p className="text-sm font-mono text-gray-900 break-all">
                     {t.token.substring(0, 20)}
                   </p>
+                </div>
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Number</p>
+                  {t.number ? (
+                    <p className="text-sm font-mono text-gray-900">
+                      {t.number}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Not assigned</p>
+                  )}
                 </div>
                 <div className="mb-3">
                   <p className="text-xs text-gray-500 mb-1">Last Updated</p>
