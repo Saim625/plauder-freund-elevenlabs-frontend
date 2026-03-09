@@ -23,13 +23,8 @@ const NumberAssignModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!number.trim()) {
-      toast.error("Number is required");
-      return;
-    }
-
     if (!/^[^<>]{0,15}$/.test(number.trim())) {
-      toast.error("Number must be 11 or 12 digits");
+      toast.error("Number must be 0 or 15 digits");
       return;
     }
 
@@ -79,7 +74,7 @@ const NumberAssignModal = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assign Number (10-15 digits)
+                Assign Number (0-15 digits)
               </label>
               <input
                 type="text"
