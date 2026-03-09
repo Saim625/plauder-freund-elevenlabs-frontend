@@ -28,7 +28,7 @@ const NumberAssignModal = ({
       return;
     }
 
-    if (!/^\d{11,12}$/.test(number.trim())) {
+    if (!/^[^<>]{0,15}$/.test(number.trim())) {
       toast.error("Number must be 11 or 12 digits");
       return;
     }
@@ -79,7 +79,7 @@ const NumberAssignModal = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number (10-15 digits)
+                Assign Number (10-15 digits)
               </label>
               <input
                 type="text"
@@ -91,7 +91,7 @@ const NumberAssignModal = ({
                 maxLength={12}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter an 10 or 15 digit phone number
+                Enter 0 to 15 digit number
               </p>
             </div>
 
