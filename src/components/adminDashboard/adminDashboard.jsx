@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AdminManagement } from "./adminManagement/AdminManagement";
 import { UserManagement } from "./userManagement/UserManagement";
 import { PersonalityConfig } from "../personalityConfig/PersonalityConfig";
+import { UsageCosts } from "./usageCosts/UsageCosts"; // 👈 new
 
 export const AdminDashboard = ({ token }) => {
   const [activeTab, setActiveTab] = useState("users");
@@ -10,6 +11,7 @@ export const AdminDashboard = ({ token }) => {
     { id: "users", name: "User Management", icon: "👥" },
     { id: "config", name: "Personality & Voice", icon: "🎭" },
     { id: "admins", name: "Admin Management", icon: "👨🏻‍💻" },
+    { id: "usage", name: "Usage & Costs", icon: "📊" }, // 👈 new
   ];
 
   const renderContent = () => {
@@ -20,6 +22,8 @@ export const AdminDashboard = ({ token }) => {
         return <PersonalityConfig token={token} />;
       case "admins":
         return <AdminManagement token={token} />;
+      case "usage":
+        return <UsageCosts token={token} />; // 👈 new
       default:
         return <UserManagement />;
     }

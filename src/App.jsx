@@ -29,7 +29,7 @@ export default function App() {
     return <ResetPasswordScreen />;
   }
 
-  const { isAuthorized, token, isAdmin } = useTokenAuth();
+  const { isAuthorized, token, isAdmin, role } = useTokenAuth();
 
   const { isAdminAuthenticated } = useAdminSession();
 
@@ -62,11 +62,15 @@ export default function App() {
 
   // ✅ Setup socket listeners ONCE
   useEffect(() => {
-    if (!token || !greetingText || isAdmin) {
+    if (!token || isAdmin) {
       return;
     }
 
     const socket = connect();
+
+    if (!greetingText) {
+      return;
+    }
 
     // Clear all old listeners
     socket.off("ai-audio-chunk");
@@ -239,7 +243,7 @@ export default function App() {
   if (!isAuthorized) return <LandingPage />;
 
   if (isAdmin) {
-    if (!isAdminAuthenticated) {
+    if (role === "MAIN_ADMIN" && !isAdminAuthenticated) {
       return (
         <AdminPasswordScreen
           urlToken={token}

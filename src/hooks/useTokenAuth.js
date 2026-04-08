@@ -4,6 +4,7 @@ export function useTokenAuth() {
   const [isAuthorized, setIsAuthorized] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [token, setToken] = useState(null);
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -31,11 +32,14 @@ export function useTokenAuth() {
       .then((res) => res.json())
       .then((data) => {
         setIsAuthorized(!!data.success); // ✅ token validity only
+        if (isAdminRoute && data.success) {
+          setRole(data.role); // ✅ capture role
+        }
       })
       .catch(() => {
         setIsAuthorized(false);
       });
   }, []);
 
-  return { isAuthorized, token, isAdmin };
+  return { isAuthorized, token, isAdmin, role };
 }
