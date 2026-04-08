@@ -70,7 +70,11 @@ export function SessionDetailModal({ isOpen, onClose, session }) {
           <Section title="OpenAI Realtime (gpt-4o-realtime)">
             <Row
               label="Input Tokens"
-              value={session.realtimeInputTokens?.toLocaleString()}
+              value={(
+                session.realtimeAudioInputTokens +
+                session.realtimeCachedInputTokens +
+                session.realtimeTextInputTokens
+              )?.toLocaleString()}
             />
             <Row
               label="Output Tokens"

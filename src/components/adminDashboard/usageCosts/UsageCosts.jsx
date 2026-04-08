@@ -244,10 +244,12 @@ export const UsageCosts = ({ token: adminToken }) => {
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-700">
                         {(
-                          s.totalRealtimeInputTokens +
-                          s.totalRealtimeOutputTokens +
-                          s.totalChatInputTokens +
-                          s.totalChatOutputTokens
+                          (s.totalRealtimeTextInputTokens || 0) +
+                          (s.totalRealtimeAudioInputTokens || 0) +
+                          (s.totalRealtimeCachedInputTokens || 0) +
+                          (s.totalRealtimeOutputTokens || 0) +
+                          (s.totalChatInputTokens || 0) +
+                          (s.totalChatOutputTokens || 0)
                         ).toLocaleString()}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-gray-800">

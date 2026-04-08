@@ -109,6 +109,8 @@ export default function UserSessionsModal({
 
   if (!isOpen) return null;
 
+  console.log("Totals:", totals);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
@@ -193,7 +195,9 @@ export default function UserSessionsModal({
               {
                 label: "Total Tokens",
                 value: (
-                  totals.totalRealtimeInputTokens +
+                  totals.totalRealtimeAudioInputTokens +
+                  totals.totalRealtimeCachedInputTokens +
+                  totals.totalRealtimeTextInputTokens +
                   totals.totalRealtimeOutputTokens +
                   totals.totalChatInputTokens +
                   totals.totalChatOutputTokens
@@ -262,7 +266,9 @@ export default function UserSessionsModal({
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-700">
                       {(
-                        s.realtimeInputTokens +
+                        s.realtimeAudioInputTokens +
+                        s.realtimeCachedInputTokens +
+                        s.realtimeTextInputTokens +
                         s.realtimeOutputTokens +
                         s.chatInputTokens +
                         s.chatOutputTokens
