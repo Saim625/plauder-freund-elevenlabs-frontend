@@ -39,6 +39,23 @@ export const UserManagement = ({ token: adminToken }) => {
     });
   };
 
+  /** Optional ISO from API (camelCase or legacy snake_case). */
+  const getLastActiveAt = (token) =>
+    token?.lastActiveAt ?? token?.last_active_at ?? null;
+
+  const formatLastActive = (isoString) => {
+    if (!isoString) return "—";
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const fetchTokenDetails = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -204,6 +221,9 @@ export const UserManagement = ({ token: adminToken }) => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Created
                   </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                    Last active
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
                   </th>
@@ -223,7 +243,7 @@ export const UserManagement = ({ token: adminToken }) => {
                 {tokens.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="4"
+                      colSpan={7}
                       className="px-6 py-12 text-center text-gray-500"
                     >
                       <div className="flex flex-col items-center">
@@ -261,6 +281,10 @@ export const UserManagement = ({ token: adminToken }) => {
 
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {formatCreationDate(t.createdAt)}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                        {formatLastActive(getLastActiveAt(t))}
                       </td>
 
                       <td className="px-6 py-4">
@@ -399,6 +423,13 @@ export const UserManagement = ({ token: adminToken }) => {
                     <p className="text-xs text-gray-500 mb-1">Created</p>
                     <p className="text-sm text-gray-700">
                       {formatCreationDate(t.createdAt)}
+                    </p>
+                  </div>
+
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-1">Last active</p>
+                    <p className="text-sm text-gray-700">
+                      {formatLastActive(getLastActiveAt(t))}
                     </p>
                   </div>
 
