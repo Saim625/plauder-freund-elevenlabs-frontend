@@ -69,18 +69,34 @@ export function SessionDetailModal({ isOpen, onClose, session }) {
 
           <Section title="OpenAI Realtime (gpt-4o-realtime)">
             <Row
-              label="Input Tokens"
-              value={(
-                session.realtimeAudioInputTokens +
-                session.realtimeCachedInputTokens +
-                session.realtimeTextInputTokens
-              )?.toLocaleString()}
+              label="Text Input Tokens (non-cached)"
+              value={session.realtimeTextInputTokens?.toLocaleString()}
+            />
+            <Row
+              label="Audio Input Tokens (non-cached)"
+              value={session.realtimeAudioInputTokens?.toLocaleString()}
+            />
+            <Row
+              label="Cached Text Tokens"
+              value={session.realtimeCachedInputTokens?.toLocaleString()}
+            />
+            <Row
+              label="Cached Audio Tokens"
+              value={session.realtimeCachedAudioInputTokens?.toLocaleString()}
             />
             <Row
               label="Output Tokens"
               value={session.realtimeOutputTokens?.toLocaleString()}
             />
             <Row label="Cost" value={fmt(session.realtimeGptCost)} />
+          </Section>
+
+          <Section title="Whisper Transcription">
+            <Row
+              label="Audio Duration"
+              value={`~${Math.round(((session.whisperSeconds || 0) / 60) * 10) / 10} min`}
+            />
+            <Row label="Cost" value={fmt(session.whisperCost)} />
           </Section>
 
           <Section title="OpenAI Chat (gpt-4o-mini)">

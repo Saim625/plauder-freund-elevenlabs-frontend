@@ -39,7 +39,11 @@ export const UsageCosts = ({ token: adminToken }) => {
     setLoading(true);
     try {
       const [summaryRes, platformRes] = await Promise.all([
+        // axios.get(`${API_BASE_URL}/usage/summary?month=${selectedMonth}`, {
+        //   headers,
+        // }),
         axios.get(`${API_BASE_URL}/usage/summary`, { headers }),
+
         axios.get(`${API_BASE_URL}/usage/platform?month=${selectedMonth}`, {
           headers,
         }),
@@ -77,6 +81,14 @@ export const UsageCosts = ({ token: adminToken }) => {
   const platformTotal = platform?.grandTotal || 0;
   const apiTotal = platform?.apiCosts?.totalApiCost || 0;
   const opTotal = platform?.totalOperationalCost || 0;
+
+  // const totalPlatformSeconds = summaries.reduce(
+  //   (acc, s) => acc + (Number(s.totalDurationSeconds) || 0),
+  //   0,
+  // );
+  // const totalPlatformMinutes = totalPlatformSeconds / 60;
+  // const costPerMinute =
+  //   totalPlatformMinutes > 0 ? platformTotal / totalPlatformMinutes : null;
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
@@ -167,6 +179,24 @@ export const UsageCosts = ({ token: adminToken }) => {
             <p className="text-xs text-blue-200 mt-2">
               API + Operational for {selectedMonth}
             </p>
+            {/* <div className="mt-3 pt-3 border-t border-blue-500/40 space-y-1.5">
+              <p className="text-xs text-blue-100 flex justify-between gap-2 items-baseline">
+                <span className="text-blue-200/90 shrink-0">
+                  Platform minutes
+                </span>
+                <span className="font-semibold text-white tabular-nums text-right">
+                  {totalPlatformMinutes.toFixed(1)} min
+                </span>
+              </p>
+              <p className="text-xs text-blue-100 flex justify-between gap-2 items-baseline">
+                <span className="text-blue-200/90 shrink-0">
+                  Cost per minute
+                </span>
+                <span className="font-semibold text-white tabular-nums text-right">
+                  {costPerMinute != null ? `$${costPerMinute.toFixed(4)}` : "—"}
+                </span>
+              </p>
+            </div> */}
           </div>
         </div>
       )}
@@ -247,6 +277,7 @@ export const UsageCosts = ({ token: adminToken }) => {
                           (s.totalRealtimeTextInputTokens || 0) +
                           (s.totalRealtimeAudioInputTokens || 0) +
                           (s.totalRealtimeCachedInputTokens || 0) +
+                          (s.totalRealtimeCachedAudioInputTokens || 0) +
                           (s.totalRealtimeOutputTokens || 0) +
                           (s.totalChatInputTokens || 0) +
                           (s.totalChatOutputTokens || 0)

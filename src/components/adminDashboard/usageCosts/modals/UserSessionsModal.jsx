@@ -195,12 +195,13 @@ export default function UserSessionsModal({
               {
                 label: "Total Tokens",
                 value: (
-                  totals.totalRealtimeAudioInputTokens +
-                  totals.totalRealtimeCachedInputTokens +
-                  totals.totalRealtimeTextInputTokens +
-                  totals.totalRealtimeOutputTokens +
-                  totals.totalChatInputTokens +
-                  totals.totalChatOutputTokens
+                  (totals.totalRealtimeTextInputTokens || 0) +
+                  (totals.totalRealtimeAudioInputTokens || 0) +
+                  (totals.totalRealtimeCachedInputTokens || 0) +
+                  (totals.totalRealtimeCachedAudioInputTokens || 0) +
+                  (totals.totalRealtimeOutputTokens || 0) +
+                  (totals.totalChatInputTokens || 0) +
+                  (totals.totalChatOutputTokens || 0)
                 ).toLocaleString(),
               },
               {
@@ -268,6 +269,7 @@ export default function UserSessionsModal({
                       {(
                         s.realtimeAudioInputTokens +
                         s.realtimeCachedInputTokens +
+                        s.realtimeCachedAudioInputTokens +
                         s.realtimeTextInputTokens +
                         s.realtimeOutputTokens +
                         s.chatInputTokens +
