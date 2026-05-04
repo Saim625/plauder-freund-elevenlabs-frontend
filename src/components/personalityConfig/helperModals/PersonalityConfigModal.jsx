@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -14,6 +14,13 @@ const PersonalityConfigModal = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarDeleting, setAvatarDeleting] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [form, setForm] = useState({
     voiceId: "",
@@ -40,13 +47,10 @@ const PersonalityConfigModal = ({
         setLoading(true);
         const res = await axios.get(
           `${API_BASE}/user/personality/${userToken}`,
-          {
-            headers: { Authorization: `Bearer ${adminToken}` },
-          },
+          { headers: { Authorization: `Bearer ${adminToken}` } },
         );
 
         if (res.data.success && res.data.personality) {
-          // Map the response to form structure
           const personality = res.data.personality;
           setForm({
             voiceId: personality.voiceId || "",
@@ -64,6 +68,15 @@ const PersonalityConfigModal = ({
             },
             conversationGuidelines: personality.conversationGuidelines || [],
           });
+
+          // Set avatar if exists
+          if (personality.avatarUrl) {
+            setAvatarUrl(
+              `${import.meta.env.VITE_SERVER_URL}${personality.avatarUrl}`,
+            );
+          } else {
+            setAvatarUrl(null);
+          }
         }
       } catch (err) {
         toast.error("Failed to load personality config");
@@ -74,12 +87,87 @@ const PersonalityConfigModal = ({
     };
 
     fetchConfig();
+    // Reset preview when modal opens
+    setAvatarPreview(null);
   }, [isOpen, userToken, adminToken]);
+
+  // Handle file selection — show preview before uploading
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Only JPG, PNG and WebP images are allowed");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be smaller than 2MB");
+      return;
+    }
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => setAvatarPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarUpload = async () => {
+    const file = fileInputRef.current?.files[0];
+    if (!file) return;
+
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await axios.post(
+        `${API_BASE}/user/avatar/${userToken}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      if (res.data.success) {
+        setAvatarUrl(`${import.meta.env.VITE_SERVER_URL}${res.data.avatarUrl}`);
+        setAvatarPreview(null);
+        fileInputRef.current.value = "";
+        toast.success("Avatar uploaded successfully");
+        onUpdated?.();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Upload failed");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    setAvatarDeleting(true);
+    try {
+      await axios.delete(`${API_BASE}/user/avatar/${userToken}`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      setAvatarUrl(null);
+      setAvatarPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.success("Avatar removed");
+      onUpdated?.();
+    } catch {
+      toast.error("Failed to remove avatar");
+    } finally {
+      setAvatarDeleting(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-
       const payload = {
         voiceId: form.voiceId,
         speakingSpeed: form.speakingSpeed || "normal",
@@ -100,9 +188,7 @@ const PersonalityConfigModal = ({
       await axios.put(
         `${API_BASE}/update/user/personality/${userToken}`,
         payload,
-        {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        },
+        { headers: { Authorization: `Bearer ${adminToken}` } },
       );
 
       toast.success("Personality updated successfully");
@@ -121,19 +207,19 @@ const PersonalityConfigModal = ({
       await axios.post(
         `${API_BASE}/user/personality/${userToken}/reset`,
         {},
-        {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        },
+        { headers: { Authorization: `Bearer ${adminToken}` } },
       );
-
       toast.success("Personality reset to default");
       onUpdated?.();
       setResetModalOpen(false);
       onClose();
-    } catch (err) {
+    } catch {
       toast.error("Reset failed");
     }
   };
+
+  // Current display image — preview takes priority over saved
+  const displayImage = avatarPreview || avatarUrl;
 
   if (!isOpen) return null;
 
@@ -168,7 +254,124 @@ const PersonalityConfigModal = ({
               </div>
             ) : (
               <>
-                {/* Voice Settings */}
+                {/* ── AVATAR SECTION ─────────────────────────────────────────── */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                    User Avatar
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-4">
+                    This avatar will be displayed on the user's screen while
+                    talking to the AI. Accepted formats: JPG, PNG, WebP. Max
+                    size: 2MB.
+                  </p>
+
+                  <div className="flex items-center gap-5">
+                    {/* Avatar preview circle */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-20 h-20 rounded-full border-2 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {displayImage ? (
+                          <img
+                            src={displayImage}
+                            alt="User avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <svg
+                            className="w-8 h-8 text-gray-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      {/* Green dot if avatar exists */}
+                      {avatarUrl && !avatarPreview && (
+                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                      )}
+                      {/* Orange dot if preview pending upload */}
+                      {avatarPreview && (
+                        <div
+                          className="absolute bottom-0 right-0 w-4 h-4 bg-orange-400 rounded-full border-2 border-white"
+                          title="Not uploaded yet"
+                        />
+                      )}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex-1 space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="avatar-upload-input"
+                      />
+
+                      <div className="flex flex-wrap gap-2">
+                        <label
+                          htmlFor="avatar-upload-input"
+                          className="cursor-pointer px-3 py-1.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          {displayImage ? "Change Photo" : "Choose Photo"}
+                        </label>
+
+                        {avatarPreview && (
+                          <button
+                            onClick={handleAvatarUpload}
+                            disabled={avatarUploading}
+                            className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {avatarUploading ? "Uploading…" : "Upload"}
+                          </button>
+                        )}
+
+                        {avatarUrl && !avatarPreview && (
+                          <button
+                            onClick={handleAvatarDelete}
+                            disabled={avatarDeleting}
+                            className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                          >
+                            {avatarDeleting ? "Removing…" : "Remove"}
+                          </button>
+                        )}
+
+                        {avatarPreview && (
+                          <button
+                            onClick={() => {
+                              setAvatarPreview(null);
+                              if (fileInputRef.current)
+                                fileInputRef.current.value = "";
+                            }}
+                            className="px-3 py-1.5 text-sm font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+
+                      {avatarPreview && (
+                        <p className="text-xs text-orange-500">
+                          ⚠️ Preview only — click Upload to save
+                        </p>
+                      )}
+                      {!avatarUrl && !avatarPreview && (
+                        <p className="text-xs text-gray-400">
+                          No avatar assigned yet
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── VOICE SETTINGS ─────────────────────────────────────────── */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">
                     Voice Settings
@@ -188,7 +391,6 @@ const PersonalityConfigModal = ({
                         placeholder="ElevenLabs Voice ID"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Speaking Speed
@@ -208,7 +410,7 @@ const PersonalityConfigModal = ({
                   </div>
                 </div>
 
-                {/* Personality Settings */}
+                {/* ── PERSONALITY SETTINGS ───────────────────────────────────── */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">
                     Personality Settings
@@ -252,7 +454,7 @@ const PersonalityConfigModal = ({
                   </div>
                 </div>
 
-                {/* Personality Traits */}
+                {/* ── PERSONALITY TRAITS ─────────────────────────────────────── */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">
                     Personality Traits
@@ -292,7 +494,7 @@ const PersonalityConfigModal = ({
                   </div>
                 </div>
 
-                {/* Conversation Guidelines */}
+                {/* ── CONVERSATION GUIDELINES ────────────────────────────────── */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">
                     Conversation Guidelines
@@ -307,14 +509,16 @@ const PersonalityConfigModal = ({
                     }
                     rows={4}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Enter guidelines (one per line)&#10;Example:&#10;Always be respectful&#10;Keep responses under 2 minutes&#10;Avoid medical advice"
+                    placeholder={
+                      "Enter guidelines (one per line)\nExample:\nAlways be respectful\nKeep responses under 2 minutes\nAvoid medical advice"
+                    }
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     Enter conversation rules or constraints, one per line
                   </p>
                 </div>
 
-                {/* Behavior Toggles */}
+                {/* ── BEHAVIOR SETTINGS ──────────────────────────────────────── */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">
                     Behavior Settings
@@ -358,7 +562,6 @@ const PersonalityConfigModal = ({
             >
               Reset to Default
             </button>
-
             <div className="flex gap-3">
               <button
                 onClick={onClose}
@@ -402,12 +605,10 @@ const PersonalityConfigModal = ({
                 Reset Configuration
               </h2>
             </div>
-
             <p className="mb-6 text-gray-600">
               Are you sure you want to reset this personality configuration to
               default values? This action cannot be undone.
             </p>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setResetModalOpen(false)}

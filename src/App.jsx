@@ -298,7 +298,7 @@ export default function App() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#fdfcf7] font-[Inter] p-4">
       {/* Avatar always visible */}
-      <Avatar />
+      <Avatar userToken={token} />
 
       {/* Start button appears only in idle stage */}
       <StartButton
