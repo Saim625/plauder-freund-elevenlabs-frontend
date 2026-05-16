@@ -4,6 +4,35 @@ import toast from "react-hot-toast";
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL + "/api";
 
+const providerLabel = (p) =>
+  ({
+    openai_realtime: "Realtime",
+    openai_chat: "Chat",
+    elevenlabs: "ElevenLabs TTS",
+    whisper: "Whisper",
+  })[p] || p;
+
+const typeLabel = (t) =>
+  ({
+    text_input_token: "Text Input",
+    cached_text_input_token: "Cached Text Input",
+    audio_input_token: "Audio Input",
+    cached_audio_input_token: "Cached Audio Input",
+    output_token: "Output",
+    input_token: "Input",
+    cached_input_token: "Cached Input",
+    audio_character: "Per Character",
+    per_minute: "Per Minute",
+  })[t] || t;
+
+const providerColor = (p) =>
+  ({
+    openai_realtime: "bg-blue-100 text-blue-700",
+    openai_chat: "bg-purple-100 text-purple-700",
+    elevenlabs: "bg-green-100 text-green-700",
+    whisper: "bg-orange-100 text-orange-700",
+  })[p] || "bg-gray-100 text-gray-600";
+
 export function ProviderPricingModal({ isOpen, onClose, adminToken }) {
   const [pricing, setPricing] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -55,25 +84,22 @@ export function ProviderPricingModal({ isOpen, onClose, adminToken }) {
     }
   };
 
-  const providerLabel = (p) =>
-    ({
-      openai_realtime: "GPT-4o Realtime",
-      openai_chat: "GPT-4o-mini Chat",
-      elevenlabs: "ElevenLabs TTS",
-    })[p] || p;
-
-  const typeLabel = (t) =>
-    ({
-      input_token: "Input Token",
-      output_token: "Output Token",
-      audio_character: "Audio Character",
-    })[t] || t;
+  // Group by provider → model
+  const grouped = pricing.reduce((acc, p) => {
+    const key = `${p.provider}__${p.model}`;
+    if (!acc[key]) {
+      acc[key] = { provider: p.provider, model: p.model, items: [] };
+    }
+    acc[key].items.push(p);
+    return acc;
+  }, {});
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h3 className="text-lg font-bold text-gray-800">
@@ -91,58 +117,75 @@ export function ProviderPricingModal({ isOpen, onClose, adminToken }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {loading ? (
             <div className="text-center py-6">
               <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-gray-200 border-t-blue-600" />
             </div>
           ) : (
-            <div className="space-y-3">
-              {pricing.map((p) => (
-                <div key={p.id} className="bg-gray-50 rounded-xl px-4 py-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {providerLabel(p.provider)}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {typeLabel(p.priceType)}
-                      </p>
-                      {p.description && (
-                        <p className="text-xs text-gray-400 italic">
-                          {p.description}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-mono">
-                      ${Number(p.pricePerUnit).toFixed(8)}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.000000001"
-                      placeholder="New price per unit"
-                      value={editing[p.id] ?? ""}
-                      onChange={(e) =>
-                        setEditing((prev) => ({
-                          ...prev,
-                          [p.id]: e.target.value,
-                        }))
-                      }
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={() => handleSave(p.id)}
-                      disabled={saving === p.id || !editing[p.id]}
-                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
-                    >
-                      {saving === p.id ? "…" : "Save"}
-                    </button>
-                  </div>
+            Object.values(grouped).map((group) => (
+              <div
+                key={`${group.provider}__${group.model}`}
+                className="border border-gray-200 rounded-xl overflow-hidden"
+              >
+                {/* Group header — shows provider type + exact model name */}
+                <div className="bg-gray-50 px-4 py-2.5 flex items-center gap-2 border-b border-gray-100">
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${providerColor(group.provider)}`}
+                  >
+                    {providerLabel(group.provider)}
+                  </span>
+                  <span className="text-sm font-mono font-medium text-gray-700">
+                    {group.model}
+                  </span>
                 </div>
-              ))}
-            </div>
+
+                {/* Price rows */}
+                <div className="divide-y divide-gray-100">
+                  {group.items.map((p) => (
+                    <div
+                      key={p.id}
+                      className="px-4 py-3 flex items-center gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-700">
+                          {typeLabel(p.priceType)}
+                        </p>
+                        <p className="text-xs text-gray-400 font-mono">
+                          Current: ${Number(p.pricePerUnit).toFixed(9)}
+                        </p>
+                        {p.description && (
+                          <p className="text-xs text-gray-400 italic">
+                            {p.description}
+                          </p>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        step="0.000000001"
+                        placeholder="New price"
+                        value={editing[p.id] ?? ""}
+                        onChange={(e) =>
+                          setEditing((prev) => ({
+                            ...prev,
+                            [p.id]: e.target.value,
+                          }))
+                        }
+                        className="w-32 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => handleSave(p.id)}
+                        disabled={saving === p.id || !editing[p.id]}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                      >
+                        {saving === p.id ? "…" : "Save"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>

@@ -14,6 +14,8 @@ const PersonalityConfigModal = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [realtimeModel, setRealtimeModel] = useState("gpt-4o-realtime-preview");
+  const [chatModel, setChatModel] = useState("gpt-4o-mini");
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -68,6 +70,10 @@ const PersonalityConfigModal = ({
             },
             conversationGuidelines: personality.conversationGuidelines || [],
           });
+          setRealtimeModel(
+            personality.realtimeModel || "gpt-4o-realtime-preview",
+          );
+          setChatModel(personality.chatModel || "gpt-4o-mini");
 
           // Set avatar if exists
           if (personality.avatarUrl) {
@@ -183,6 +189,8 @@ const PersonalityConfigModal = ({
         conversationGuidelines: (form.conversationGuidelines || [])
           .map((line) => line.trim())
           .filter(Boolean),
+        realtimeModel,
+        chatModel,
       };
 
       await axios.put(
@@ -367,6 +375,62 @@ const PersonalityConfigModal = ({
                           No avatar assigned yet
                         </p>
                       )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                    AI Model Selection
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-4">
+                    More powerful models improve quality but increase cost per
+                    session.
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Realtime Conversation Model
+                      </label>
+                      <select
+                        value={realtimeModel}
+                        onChange={(e) => setRealtimeModel(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="gpt-realtime-mini">
+                          gpt-realtime-mini (Recommended)
+                        </option>
+                        <option value="gpt-4o-realtime-preview">
+                          gpt-4o-realtime-preview
+                        </option>
+                        <option value="gpt-realtime">gpt-realtime</option>
+                        <option value="gpt-realtime-1.5">
+                          gpt-realtime-1.5
+                        </option>
+                        <option value="gpt-realtime-2">
+                          gpt-realtime-2 (Latest)
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Chat Model (Greeting & Memory Extraction)
+                      </label>
+                      <select
+                        value={chatModel}
+                        onChange={(e) => setChatModel(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="gpt-4.1-nano">
+                          gpt-4.1-nano (Cheapest)
+                        </option>
+                        <option value="gpt-4o-mini">
+                          gpt-4o-mini (Recommended)
+                        </option>
+                        <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                        <option value="gpt-4.1">gpt-4.1</option>
+                        <option value="gpt-4o">gpt-4o</option>
+                      </select>
                     </div>
                   </div>
                 </div>

@@ -65,9 +65,22 @@ export function SessionDetailModal({ isOpen, onClose, session }) {
               label="Duration"
               value={fmtDuration(session.durationSeconds)}
             />
+            <Row
+              label="Realtime Model"
+              value={session.realtimeModelUsed || "gpt-4o-realtime-preview"}
+              mono
+            />
+            <Row
+              label="Chat Model"
+              value={session.chatModelUsed || "gpt-4o-mini"}
+              mono
+            />
           </Section>
 
-          <Section title="OpenAI Realtime (gpt-4o-realtime)">
+          <Section
+            title={`OpenAI Realtime (${session.realtimeModelUsed || "gpt-4o-realtime-preview"})`}
+          >
+            {" "}
             <Row
               label="Text Input Tokens (non-cached)"
               value={session.realtimeTextInputTokens?.toLocaleString()}
@@ -99,7 +112,9 @@ export function SessionDetailModal({ isOpen, onClose, session }) {
             <Row label="Cost" value={fmt(session.whisperCost)} />
           </Section>
 
-          <Section title="OpenAI Chat (gpt-4o-mini)">
+          <Section
+            title={`OpenAI Chat (${session.chatModelUsed || "gpt-4o-mini"})`}
+          >
             <Row
               label="Input Tokens"
               value={session.chatInputTokens?.toLocaleString()}
