@@ -3,6 +3,11 @@ import StartButton from "./components/StartButton";
 import Avatar from "./components/Avatar";
 import { useMicrophone } from "./hooks/useMicrophone";
 import { useSocket } from "./hooks/useSocket";
+import { useWebRTC } from "./hooks/useWebRTC";
+import {
+  isWebRtcSocketFallbackEnabled,
+  isWebRtcTransportEnabled,
+} from "./config/webrtc";
 import { playBlob } from "./utils/audioHelpers";
 import { useTokenAuth } from "./hooks/useTokenAuth";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
@@ -52,12 +57,46 @@ export default function App() {
     playGreeting,
   } = useAudioPlayer();
 
-  const { connect, sendChunk, disconnect, socketRef } = useSocket({
+  const useWebRtc = isWebRtcTransportEnabled();
+  const socketFallbackEnabled = isWebRtcSocketFallbackEnabled();
+  const transportViaSocketRef = useRef(!useWebRtc);
+
+  const { connect, sendAudioChunkFallback, disconnect, socketRef } = useSocket({
     token,
   });
 
+  const {
+    attachLocalStream,
+    startNegotiation,
+    registerSignalingHandlers,
+    connectionState: webrtcConnectionState,
+    isEnabled: webrtcEnabled,
+  } = useWebRTC({ socketRef, enabled: useWebRtc });
+
+  useEffect(() => {
+    if (
+      webrtcEnabled &&
+      socketFallbackEnabled &&
+      webrtcConnectionState === "failed"
+    ) {
+      transportViaSocketRef.current = true;
+      console.warn(
+        "[WebRTC] Connection failed — enabling socket audio-chunk fallback",
+      );
+    }
+  }, [webrtcConnectionState, webrtcEnabled, socketFallbackEnabled]);
+
+  const sendMicChunk = useCallback(
+    (data) => {
+      if (transportViaSocketRef.current) {
+        sendAudioChunkFallback(data);
+      }
+    },
+    [sendAudioChunkFallback],
+  );
+
   const { start, stop } = useMicrophone({
-    onChunk: sendChunk,
+    onChunk: useWebRtc ? sendMicChunk : sendAudioChunkFallback,
   });
 
   // ✅ Setup socket listeners ONCE
@@ -79,6 +118,9 @@ export default function App() {
     socket.off("ai-response-done");
     socket.off("ai-error");
     socket.off("reengagement-needed");
+
+    const unregisterWebRtc =
+      webrtcEnabled ? registerSignalingHandlers(socket) : () => {};
 
     let expectedIndex = 0;
     let lastTs = Date.now();
@@ -224,6 +266,7 @@ export default function App() {
     });
 
     return () => {
+      unregisterWebRtc();
       socket.off("reengagement-needed");
       socket.off("ai-audio-chunk");
       socket.off("ai-audio-complete");
@@ -231,7 +274,7 @@ export default function App() {
       socket.off("ai-response-done");
       socket.off("ai-error");
     };
-  }, [token, greetingText]);
+  }, [token, greetingText, webrtcEnabled, registerSignalingHandlers]);
 
   if (isAuthorized === null)
     return (
@@ -284,7 +327,28 @@ export default function App() {
           }),
         );
       }
-      await start();
+      const micStream = await start();
+
+      if (webrtcEnabled && micStream) {
+        attachLocalStream(micStream);
+        const { ok, role, waitingForOffer } = await startNegotiation();
+        if (ok) {
+          transportViaSocketRef.current = false;
+          console.log(
+            `[WebRTC] Negotiation started (role=${role}${waitingForOffer ? ", awaiting server offer" : ""})`,
+          );
+        } else if (socketFallbackEnabled) {
+          transportViaSocketRef.current = true;
+          console.warn(
+            "[WebRTC] Negotiation failed — falling back to socket audio-chunk",
+          );
+        } else {
+          throw new Error("WebRTC negotiation failed");
+        }
+      } else {
+        transportViaSocketRef.current = true;
+      }
+
       setStage("chatting");
       stageRef.current = "chatting";
       socketRef.current.emit("conversation-started");

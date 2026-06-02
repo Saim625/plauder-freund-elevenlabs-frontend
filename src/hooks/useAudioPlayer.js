@@ -90,8 +90,6 @@ export function useAudioPlayer() {
       audioQueue.length < MIN_BUFFER_CHUNKS
     ) {
       return;
-      console.log("Length", audioQueue.length);
-      s;
     }
 
     isPlayingRef.current = true;

@@ -53,7 +53,7 @@ export function useSocket({ token }) {
         return;
       }
       const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      console.log("🎟️ Sending start-realtime:", token, userTimeZone);
+      console.log("✅ Socket connected, id:", socket.id);
       socket.emit("start-realtime", { token, timezone: userTimeZone });
     },
     [token],
@@ -145,11 +145,12 @@ export function useSocket({ token }) {
     }
   }, []);
 
-  const sendChunk = useCallback((data) => {
+  /** @deprecated Socket PCM transport — use WebRTC when VITE_USE_WEBRTC !== "false" */
+  const sendAudioChunkFallback = useCallback((data) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit("audio-chunk", data);
     }
   }, []);
 
-  return { connect, disconnect, sendChunk, socketRef };
+  return { connect, disconnect, sendAudioChunkFallback, socketRef };
 }
