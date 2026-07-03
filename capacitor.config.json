@@ -1,0 +1,13 @@
+{
+  "appId": "de.plauderfreund.app",
+  "appName": "Plauderfreund",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "allowsLinkPreview": false,
+    "scrollEnabled": false,
+    "limitsNavigationsToAppBoundDomains": true
+  }
+}
