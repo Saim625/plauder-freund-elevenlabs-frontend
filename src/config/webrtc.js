@@ -31,6 +31,11 @@ export function isWebRtcSocketFallbackEnabled() {
   return import.meta.env.VITE_WEBRTC_SOCKET_FALLBACK === "true";
 }
 
+/** @returns {boolean} Stream AI TTS over WebRTC when negotiated (default on) */
+export function isWebRtcTtsEnabled() {
+  return import.meta.env.VITE_WEBRTC_TTS_ENABLED !== "false";
+}
+
 /**
  * Who creates the SDP offer: "caller" (browser) or "callee" (server).
  * @returns {"caller"|"callee"}

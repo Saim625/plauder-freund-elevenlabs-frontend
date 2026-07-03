@@ -7,6 +7,7 @@ import { useWebRTC } from "./hooks/useWebRTC";
 import {
   isWebRtcSocketFallbackEnabled,
   isWebRtcTransportEnabled,
+  isWebRtcTtsEnabled,
 } from "./config/webrtc";
 import { playBlob } from "./utils/audioHelpers";
 import { useTokenAuth } from "./hooks/useTokenAuth";
@@ -18,6 +19,7 @@ import { useAdminSession } from "./hooks/useAdminSession";
 import AdminPasswordScreen from "./components/AdminPasswordScreen";
 import ResetPasswordScreen from "./components/ResetPasswordScreen";
 import { disableWakeLock, enableWakeLock } from "./utils/wakeLock";
+import { MobileTokenInputScreen } from "./components/MobileTokenInputScreen";
 
 export default function App() {
   const [stage, setStage] = useState("idle");
@@ -34,8 +36,12 @@ export default function App() {
     return <ResetPasswordScreen />;
   }
 
-  const { isAuthorized, token, isAdmin, role } = useTokenAuth();
+  const { isAuthorized, token, isAdmin, role, needsTokenInput, saveToken } =
+    useTokenAuth();
 
+  if (needsTokenInput) {
+    return <MobileTokenInputScreen onSubmit={saveToken} />;
+  }
   const { isAdminAuthenticated } = useAdminSession();
 
   const {
@@ -58,8 +64,10 @@ export default function App() {
   } = useAudioPlayer();
 
   const useWebRtc = isWebRtcTransportEnabled();
+  const useWebRtcTts = isWebRtcTtsEnabled();
   const socketFallbackEnabled = isWebRtcSocketFallbackEnabled();
   const transportViaSocketRef = useRef(!useWebRtc);
+  const ttsPlaybackActiveRef = useRef(false);
 
   const { connect, sendAudioChunkFallback, disconnect, socketRef } = useSocket({
     token,
@@ -69,6 +77,9 @@ export default function App() {
     attachLocalStream,
     startNegotiation,
     registerSignalingHandlers,
+    stopRemoteTtsPlayback,
+    resumeRemoteTtsPlayback,
+    ttsViaWebRtcRef,
     connectionState: webrtcConnectionState,
     isEnabled: webrtcEnabled,
   } = useWebRTC({ socketRef, enabled: useWebRtc });
@@ -113,18 +124,16 @@ export default function App() {
 
     // Clear all old listeners
     socket.off("ai-audio-chunk");
+    socket.off("ai-audio-start");
     socket.off("ai-audio-complete");
     socket.off("ai-interrupt");
     socket.off("ai-response-done");
     socket.off("ai-error");
     socket.off("reengagement-needed");
 
-    const unregisterWebRtc =
-      webrtcEnabled ? registerSignalingHandlers(socket) : () => {};
-
-    let expectedIndex = 0;
-    let lastTs = Date.now();
-    let chunkCounter = 0; // +++
+    const unregisterWebRtc = webrtcEnabled
+      ? registerSignalingHandlers(socket)
+      : () => {};
     const processedContexts = new Set(); // 🔥 Track processed contexts
 
     socket.on("reengagement-needed", () => {
@@ -136,7 +145,10 @@ export default function App() {
       }
 
       const isAiPlaying =
-        activeSourcesRef.current.length > 0 || audioQueueRef.current.length > 0;
+        useWebRtcTts && ttsViaWebRtcRef.current
+          ? ttsPlaybackActiveRef.current
+          : activeSourcesRef.current.length > 0 ||
+            audioQueueRef.current.length > 0;
 
       if (isAiPlaying) {
         console.log("⏳ [FE] AI still speaking — ignoring re-engagement");
@@ -147,50 +159,30 @@ export default function App() {
       socket.emit("trigger-reengagement");
     });
 
+    socket.on("ai-audio-start", ({ contextId }) => {
+      if (!useWebRtcTts || !ttsViaWebRtcRef.current) {
+        return;
+      }
+
+      ttsPlaybackActiveRef.current = true;
+      currentContextIdRef.current = contextId;
+      resumeRemoteTtsPlayback();
+    });
+
     socket.on("ai-audio-chunk", (data) => {
+      if (useWebRtcTts && ttsViaWebRtcRef.current) {
+        return;
+      }
+
       if (!data?.audio || !data?.contextId) {
         return;
       }
       const { contextId, audio, index, sentAt } = data;
 
-      const now = Date.now();
-      const gapMs = now - lastTs; //+++
-      lastTs = now;
-
-      chunkCounter++; //+++
-
-      console.log("🎧 Audio Chunk Received", {
-        chunkCounter,
-        indexFromBE: index,
-        expectedIndex,
-        gapMs, // ⬅ key for production debugging
-        chunkSizeBytes: audio.byteLength,
-        contextId,
-        queueLength: audioQueueRef.current.length,
-      }); //+++
-
-      console.log("🎧 Chunk timing", {
-        index,
-        sentAt,
-        receivedAt: Date.now(),
-        transportDelayMs: Date.now() - sentAt,
-      });
-
-      if (index !== expectedIndex) {
-        console.warn("⚠️ Chunk sequence issue", {
-          expectedIndex,
-          receivedIndex: index,
-          gapMs,
-        });
-        expectedIndex = index;
-      }
-      expectedIndex++;
-
       if (
         currentContextIdRef.current &&
         currentContextIdRef.current !== contextId
       ) {
-        console.log(`🔄 New context detected, stopping old playback`);
         stopAudioPlayback();
       }
 
@@ -204,36 +196,44 @@ export default function App() {
 
       // 🔥 FIX: Handle null/unknown contextId
       if (!contextId || contextId === "unknown") {
-        console.warn(
-          `⚠️ [AUDIO COMPLETE] Received null/unknown contextId, skipping`,
-        );
         return;
       }
-
-      console.log(`✅ [AUDIO COMPLETE] Received for context: ${contextId}`);
-
       // 🔥 FIX: Prevent duplicate processing
       if (processedContexts.has(contextId)) {
-        console.log(
-          `⚠️ Already processed context ${contextId}, ignoring duplicate`,
-        );
         return;
       }
 
       processedContexts.add(contextId);
+
+      if (useWebRtcTts && ttsViaWebRtcRef.current) {
+        const drainMs = 700;
+
+        setTimeout(() => {
+          socket.emit("ai-audio-done", { contextId });
+
+          ttsPlaybackActiveRef.current = false;
+          currentContextIdRef.current = null;
+
+          if (processedContexts.size > 10) {
+            const arr = Array.from(processedContexts);
+            processedContexts.clear();
+            arr.slice(-10).forEach((ctx) => processedContexts.add(ctx));
+          }
+        }, drainMs);
+
+        return;
+      }
 
       const checkIfDone = () => {
         if (
           activeSourcesRef.current.length === 0 &&
           audioQueueRef.current.length === 0
         ) {
-          console.log(`[PLAYBACK_DONE] Notifying backend. ctx=${contextId}`);
           socket.emit("ai-audio-done", { contextId });
 
           audioQueueRef.current = [];
           nextStartTimeRef.current = 0;
           currentContextIdRef.current = null;
-          expectedIndex = 0;
 
           // 🔥 Clean up old contexts (keep last 10)
           if (processedContexts.size > 10) {
@@ -242,9 +242,6 @@ export default function App() {
             arr.slice(-10).forEach((ctx) => processedContexts.add(ctx));
           }
         } else {
-          console.log(
-            `[WAITING] Still playing... sources=${activeSourcesRef.current.length}, queue=${audioQueueRef.current.length}`,
-          );
           setTimeout(checkIfDone, 100);
         }
       };
@@ -253,8 +250,9 @@ export default function App() {
     });
 
     socket.on("ai-interrupt", () => {
-      console.log("🛑 [AI INTERRUPT] Stopping playback");
       stopAudioPlayback();
+      stopRemoteTtsPlayback();
+      ttsPlaybackActiveRef.current = false;
     });
 
     socket.on("ai-response-done", (data) => {
@@ -269,12 +267,21 @@ export default function App() {
       unregisterWebRtc();
       socket.off("reengagement-needed");
       socket.off("ai-audio-chunk");
+      socket.off("ai-audio-start");
       socket.off("ai-audio-complete");
       socket.off("ai-interrupt");
       socket.off("ai-response-done");
       socket.off("ai-error");
     };
-  }, [token, greetingText, webrtcEnabled, registerSignalingHandlers]);
+  }, [
+    token,
+    greetingText,
+    webrtcEnabled,
+    useWebRtcTts,
+    registerSignalingHandlers,
+    resumeRemoteTtsPlayback,
+    stopRemoteTtsPlayback,
+  ]);
 
   if (isAuthorized === null)
     return (
@@ -335,7 +342,9 @@ export default function App() {
         if (ok) {
           transportViaSocketRef.current = false;
           console.log(
-            `[WebRTC] Negotiation started (role=${role}${waitingForOffer ? ", awaiting server offer" : ""})`,
+            `[WebRTC] Negotiation started (role=${role}${
+              waitingForOffer ? ", awaiting server offer" : ""
+            })`,
           );
         } else if (socketFallbackEnabled) {
           transportViaSocketRef.current = true;

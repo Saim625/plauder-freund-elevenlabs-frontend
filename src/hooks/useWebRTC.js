@@ -12,10 +12,11 @@ const SIGNAL_EVENTS = {
   CLOSE: "webrtc-close",
   RESET: "webrtc-reset",
   READY: "webrtc-ready",
+  TTS_READY: "webrtc-tts-ready",
 };
 
 /**
- * WebRTC mic uplink with Socket.IO signaling.
+ * WebRTC mic uplink + AI TTS downlink with Socket.IO signaling.
  * One RTCPeerConnection per session; recreated on explicit reset or failed connection.
  */
 export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
@@ -25,6 +26,7 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
   const remoteAudioElRef = useRef(null);
   const isNegotiatingRef = useRef(false);
   const hasSocketConnectedOnceRef = useRef(false);
+  const ttsViaWebRtcRef = useRef(false);
 
   const [connectionState, setConnectionState] = useState("new");
   const [lastError, setLastError] = useState(null);
@@ -55,25 +57,23 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
     }
   }, []);
 
-  const queueOrAddIceCandidate = useCallback(
-    async (pc, candidateInit) => {
-      if (!candidateInit) return;
-      if (!pc.remoteDescription) {
-        pendingIceRef.current.push(candidateInit);
-        return;
-      }
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
-      } catch (err) {
-        console.warn("[WebRTC] ICE candidate error:", err.message);
-      }
-    },
-    [],
-  );
+  const queueOrAddIceCandidate = useCallback(async (pc, candidateInit) => {
+    if (!candidateInit) return;
+    if (!pc.remoteDescription) {
+      pendingIceRef.current.push(candidateInit);
+      return;
+    }
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
+    } catch (err) {
+      console.warn("[WebRTC] ICE candidate error:", err.message);
+    }
+  }, []);
 
   const closePeerConnection = useCallback(() => {
     isNegotiatingRef.current = false;
     pendingIceRef.current = [];
+    ttsViaWebRtcRef.current = false;
 
     if (remoteAudioElRef.current) {
       remoteAudioElRef.current.srcObject = null;
@@ -111,6 +111,22 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
     });
   }, []);
 
+  const stopRemoteTtsPlayback = useCallback(() => {
+    const audioEl = remoteAudioElRef.current;
+    if (!audioEl) return;
+
+    audioEl.pause();
+    audioEl.muted = true;
+  }, []);
+
+  const resumeRemoteTtsPlayback = useCallback(() => {
+    const audioEl = remoteAudioElRef.current;
+    if (!audioEl) return;
+
+    audioEl.muted = false;
+    audioEl.play().catch((err) => {});
+  }, []);
+
   const createPeerConnection = useCallback(() => {
     closePeerConnection();
 
@@ -134,11 +150,11 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
         emitSignal(SIGNAL_EVENTS.CLOSE, { reason: "failed" });
       }
     };
-
     pc.ontrack = (event) => {
       const [stream] = event.streams;
+
+      if (!stream) return;
       if (stream) {
-        console.log("[WebRTC] Remote audio track received");
         attachRemotePlayback(stream);
       }
     };
@@ -223,9 +239,10 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
       isNegotiatingRef.current = true;
 
       try {
-        const pc = pcRef.current?.signalingState !== "closed"
-          ? pcRef.current
-          : createPeerConnection();
+        const pc =
+          pcRef.current?.signalingState !== "closed"
+            ? pcRef.current
+            : createPeerConnection();
 
         if (!pc) return false;
 
@@ -334,14 +351,17 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
       };
       const onReset = () => {
         console.log("[WebRTC] Server requested reset");
+        ttsViaWebRtcRef.current = false;
         closePeerConnection();
         void startNegotiation();
       };
+      const onTtsReady = () => {
+        ttsViaWebRtcRef.current = true;
+        console.log("[WebRTC] TTS downlink ready — audio via WebRTC track");
+        resumeRemoteTtsPlayback();
+      };
       const onConnect = () => {
-        if (
-          hasSocketConnectedOnceRef.current &&
-          localStreamRef.current
-        ) {
+        if (hasSocketConnectedOnceRef.current && localStreamRef.current) {
           void renegotiateAfterReconnect();
         }
         hasSocketConnectedOnceRef.current = true;
@@ -351,6 +371,7 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
       socket.on(SIGNAL_EVENTS.ANSWER, onAnswer);
       socket.on(SIGNAL_EVENTS.ICE, onIce);
       socket.on(SIGNAL_EVENTS.RESET, onReset);
+      socket.on(SIGNAL_EVENTS.TTS_READY, onTtsReady);
       socket.on("connect", onConnect);
 
       return () => {
@@ -358,6 +379,7 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
         socket.off(SIGNAL_EVENTS.ANSWER, onAnswer);
         socket.off(SIGNAL_EVENTS.ICE, onIce);
         socket.off(SIGNAL_EVENTS.RESET, onReset);
+        socket.off(SIGNAL_EVENTS.TTS_READY, onTtsReady);
         socket.off("connect", onConnect);
       };
     },
@@ -369,6 +391,7 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
       handleRemoteOffer,
       renegotiateAfterReconnect,
       startNegotiation,
+      resumeRemoteTtsPlayback,
     ],
   );
 
@@ -384,6 +407,9 @@ export function useWebRTC({ socketRef, enabled = isWebRtcTransportEnabled() }) {
     renegotiateAfterReconnect,
     registerSignalingHandlers,
     teardown,
+    stopRemoteTtsPlayback,
+    resumeRemoteTtsPlayback,
+    ttsViaWebRtcRef,
     connectionState,
     lastError,
     isEnabled: enabled,
