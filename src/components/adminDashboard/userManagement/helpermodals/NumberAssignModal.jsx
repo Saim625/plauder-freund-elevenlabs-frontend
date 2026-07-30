@@ -24,7 +24,7 @@ const NumberAssignModal = ({
     e.preventDefault();
 
     if (!/^\+?[^<>]{9,19}$/.test(number.trim())) {
-      toast.error("Number must be 0 or 15 digits");
+      toast.error("Number must be 0 or 19 digits");
       return;
     }
 
@@ -74,7 +74,7 @@ const NumberAssignModal = ({
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assign Number (0-15 digits)
+                Assign Number (0-19 digits)
               </label>
               <input
                 type="text"
@@ -83,10 +83,10 @@ const NumberAssignModal = ({
                 placeholder="e.g., 03001234567"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 disabled={isSubmitting}
-                maxLength={12}
+                maxLength={20}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter 0 to 15 digit number
+                Enter 0 to 19 digit number
               </p>
             </div>
 
