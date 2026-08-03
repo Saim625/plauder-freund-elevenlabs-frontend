@@ -23,7 +23,7 @@ const NumberAssignModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!/^\+?[^<>]{9,19}$/.test(number.trim())) {
+    if (!/^\+?[^<>]{0,19}$/.test(number.trim())) {
       toast.error("Number must be 0 or 19 digits");
       return;
     }
