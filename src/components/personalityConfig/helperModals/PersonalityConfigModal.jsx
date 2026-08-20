@@ -16,7 +16,7 @@ const PersonalityConfigModal = ({
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [realtimeModel, setRealtimeModel] = useState("gpt-4o-realtime-preview");
   const [chatModel, setChatModel] = useState("gpt-4o-mini");
-  const [webSearchmodel, setWebSearchModel] = useState("gpt-4.1-mini");
+  const [webSearchModel, setWebSearchModel] = useState("gpt-4.1-mini");
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(null);
