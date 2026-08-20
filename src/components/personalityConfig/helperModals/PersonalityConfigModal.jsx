@@ -16,6 +16,7 @@ const PersonalityConfigModal = ({
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [realtimeModel, setRealtimeModel] = useState("gpt-4o-realtime-preview");
   const [chatModel, setChatModel] = useState("gpt-4o-mini");
+  cosnt[(webSearchmodel, setWebSearchModel)] = useState("gpt-4.1-mini");
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -74,6 +75,7 @@ const PersonalityConfigModal = ({
             personality.realtimeModel || "gpt-4o-realtime-preview",
           );
           setChatModel(personality.chatModel || "gpt-4o-mini");
+          setWebSearchModel(personality.webSearchModel || "gpt-4.1-mini");
 
           // Set avatar if exists
           if (personality.avatarUrl) {
@@ -191,6 +193,7 @@ const PersonalityConfigModal = ({
           .filter(Boolean),
         realtimeModel,
         chatModel,
+        webSearchModel,
       };
 
       await axios.put(
@@ -430,6 +433,19 @@ const PersonalityConfigModal = ({
                         <option value="gpt-4.1-mini">gpt-4.1-mini</option>
                         <option value="gpt-4.1">gpt-4.1</option>
                         <option value="gpt-4o">gpt-4o</option>
+                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Web Search Model
+                      </label>
+                      <select
+                        value={webSearchModel}
+                        onChange={(e) => setWebSearchModel(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="gpt-4.1">gpt-4.1</option>
+                        <option value="gpt-4.1-mini">
+                          gpt-4.1-mini (Recommended)
+                        </option>
                       </select>
                     </div>
                   </div>
