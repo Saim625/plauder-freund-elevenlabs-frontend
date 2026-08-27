@@ -325,7 +325,11 @@ export default function App() {
       stageRef.current = "starting";
 
       const disclaimer = new Audio("/audio/disclaimer.mp3");
-      await disclaimer.play();
+      await new Promise((resolve, reject) => {
+        disclaimer.onended = resolve;
+        disclaimer.onerror = reject;
+        disclaimer.play().catch(reject);
+      });
 
       if (hasGreeting) {
         const audioBuffer = await decodeGreeting(audioContextRef.current);
