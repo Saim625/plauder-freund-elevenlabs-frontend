@@ -89,6 +89,7 @@ const NumberAssignModal = ({
 
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-4">
+              {" "}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Name
@@ -104,7 +105,6 @@ const NumberAssignModal = ({
                   required
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Assign Number (0–19 characters)
@@ -125,7 +125,23 @@ const NumberAssignModal = ({
               </div>
             </div>
 
-            <div className="flex gap-3 justify-end mt-6">...</div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Saving..." : "Save"}
+              </button>
+            </div>
           </form>
         </div>
       </div>
