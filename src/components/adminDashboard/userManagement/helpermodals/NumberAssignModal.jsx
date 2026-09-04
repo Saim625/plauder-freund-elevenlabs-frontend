@@ -11,11 +11,13 @@ const NumberAssignModal = ({
   adminToken,
   onSuccess,
 }) => {
+  const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen && tokenData) {
+      setName(tokenData.name || "");
       setNumber(tokenData.number || "");
     }
   }, [isOpen, tokenData]);
@@ -23,8 +25,18 @@ const NumberAssignModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    if (name.trim().length > 100) {
+      toast.error("Name must be 100 characters or fewer");
+      return;
+    }
+
     if (!/^\+?[^<>]{0,19}$/.test(number.trim())) {
-      toast.error("Number must be 0 or 19 digits");
+      toast.error("Number must be 0 to 19 characters");
       return;
     }
 
@@ -38,7 +50,10 @@ const NumberAssignModal = ({
       const res = await axios({
         method: tokenData.number ? "put" : "post",
         url: `${API_BASE_URL}${endpoint}`,
-        data: { number: number.trim() },
+        data: {
+          name: name.trim(),
+          number: number.trim(),
+        },
         headers: { Authorization: `Bearer ${adminToken}` },
       });
 
@@ -48,7 +63,7 @@ const NumberAssignModal = ({
         onClose();
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save number");
+      toast.error(err.response?.data?.message || "Failed to save details");
     } finally {
       setIsSubmitting(false);
     }
@@ -56,6 +71,7 @@ const NumberAssignModal = ({
 
   const handleClose = () => {
     if (!isSubmitting) {
+      setName("");
       setNumber("");
       onClose();
     }
@@ -72,22 +88,41 @@ const NumberAssignModal = ({
           </h3>
 
           <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assign Number (0-19 digits)
-              </label>
-              <input
-                type="text"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                placeholder="e.g., 03001234567"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                disabled={isSubmitting}
-                maxLength={20}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Enter 0 to 19 digit number
-              </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., John Doe"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  disabled={isSubmitting}
+                  maxLength={100}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assign Number (0–19 characters)
+                </label>
+                <input
+                  type="text"
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value)}
+                  placeholder="e.g., 03001234567"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  disabled={isSubmitting}
+                  maxLength={20}
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional + prefix allowed.
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3 justify-end">

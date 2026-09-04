@@ -228,6 +228,9 @@ export const UserManagement = ({ token: adminToken }) => {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Number
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -309,6 +312,15 @@ export const UserManagement = ({ token: adminToken }) => {
                             />
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {t.name ? (
+                          <span className="font-mono">{t.name}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            Not assigned
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {t.number ? (
@@ -430,6 +442,19 @@ export const UserManagement = ({ token: adminToken }) => {
                     <p className="text-xs text-gray-500 mb-1">Last active</p>
                     <p className="text-sm text-gray-700">
                       {formatLastActive(getLastActiveAt(t))}
+                    </p>
+                  </div>
+
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-1">Name</p>
+                    <p className="text-sm text-gray-700">
+                      {t.name ? (
+                        <span className="font-mono">{t.name}</span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Not assigned
+                        </span>
+                      )}
                     </p>
                   </div>
 
