@@ -231,7 +231,7 @@ export const UserManagement = ({ token: adminToken }) => {
                     Name
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Number
+                    Numbers
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
@@ -323,8 +323,14 @@ export const UserManagement = ({ token: adminToken }) => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {t.number ? (
-                          <span className="font-mono">{t.number}</span>
+                        {t.phoneNumbers?.length ? (
+                          <div className="flex flex-col gap-1">
+                            {t.phoneNumbers.map((phone) => (
+                              <span key={phone.id} className="font-mono">
+                                {phone.number}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-gray-400 italic">
                             Not assigned
@@ -459,16 +465,24 @@ export const UserManagement = ({ token: adminToken }) => {
                   </div>
 
                   <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-1">Number</p>
-                    <p className="text-sm text-gray-700">
-                      {t.number ? (
-                        <span className="font-mono">{t.number}</span>
-                      ) : (
-                        <span className="text-gray-400 italic">
-                          Not assigned
-                        </span>
-                      )}
-                    </p>
+                    <p className="text-xs text-gray-500 mb-1">Phone Numbers</p>
+
+                    {t.phoneNumbers?.length ? (
+                      <div className="flex flex-col gap-1">
+                        {t.phoneNumbers.map((phone) => (
+                          <p
+                            key={phone.id}
+                            className="text-sm text-gray-700 font-mono"
+                          >
+                            {phone.number}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">
+                        Not assigned
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-3 border-t border-gray-200">
