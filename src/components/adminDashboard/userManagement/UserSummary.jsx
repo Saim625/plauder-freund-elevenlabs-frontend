@@ -13,10 +13,52 @@ const UserSummaryModal = ({ isOpen, onClose, userToken, adminToken }) => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteAction, setDeleteAction] = useState(null);
+
+  const handleExportMemory = async () => {
+    if (!userToken || !adminToken || exporting) return;
+
+    setExporting(true);
+    try {
+      const { data } = await axios.get(
+        `${API_BASE_URL}/usage/memory-export/${encodeURIComponent(userToken)}`,
+        { headers: { Authorization: `Bearer ${adminToken}` } },
+      );
+
+      if (!data.success || data.memory == null) {
+        toast.error(data.message || "No memory found for this user");
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `memory_${userToken.replace(/[^a-zA-Z0-9_-]/g, "_")}_${Date.now()}.json`;
+      document.body.appendChild(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      toast.success("Memory export downloaded");
+    } catch (err) {
+      toast.error(
+        err.response?.status === 404
+          ? "No memory found for this user"
+          : "Failed to export memory. Please try again.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchSummary = async () => {
     if (!userToken) return;
@@ -160,7 +202,7 @@ const UserSummaryModal = ({ isOpen, onClose, userToken, adminToken }) => {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
         <div className="bg-white rounded-xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-lg border border-gray-200 flex flex-col">
           {/* Header */}
-          <div className="flex justify-between items-start p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 p-6 border-b border-gray-200 bg-gray-50">
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-800 mb-1">
                 User Memory Summary
@@ -170,7 +212,14 @@ const UserSummaryModal = ({ isOpen, onClose, userToken, adminToken }) => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleExportMemory}
+                disabled={exporting || !userToken || !adminToken}
+                className="bg-white text-blue-600 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exporting ? "Exporting..." : "Export Memory"}
+              </button>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm cursor-pointer"

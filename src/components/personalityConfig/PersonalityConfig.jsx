@@ -180,17 +180,15 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <div className="flex flex-col gap-1">
-                        {t.number ? (
-                          <span className="font-mono text-gray-900">
-                            {t.number}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 italic">
-                            Not assigned
-                          </span>
-                        )}
-                      </div>
+                      {t.number ? (
+                        <span className="font-mono text-gray-900">
+                          {t.number}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          Not assigned
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(t.lastModified)}
