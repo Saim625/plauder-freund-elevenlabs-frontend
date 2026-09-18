@@ -173,18 +173,24 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {t.name || <span className="text-gray-400 italic">Not assigned</span>}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {t.number ? (
-                        <span className="font-mono text-gray-900">
-                          {t.number}
-                        </span>
-                      ) : (
+                      {t.name || (
                         <span className="text-gray-400 italic">
                           Not assigned
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex flex-col gap-1">
+                        {t.number ? (
+                          <span className="font-mono text-gray-900">
+                            {t.number}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            Not assigned
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(t.lastModified)}
@@ -216,7 +222,9 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                 <div className="mb-3">
                   <p className="text-xs text-gray-500 mb-1">Name</p>
                   <p className="text-sm text-gray-900">
-                    {t.name || <span className="text-gray-400 italic">Not assigned</span>}
+                    {t.name || (
+                      <span className="text-gray-400 italic">Not assigned</span>
+                    )}
                   </p>
                 </div>
                 <div className="mb-3">
