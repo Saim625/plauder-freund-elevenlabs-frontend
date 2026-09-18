@@ -28,6 +28,9 @@ export const PersonalityConfig = ({ token: adminToken }) => {
       const tokens = configRes.data.tokens || [];
       const tokenDetails = detailsRes.data?.tokens || detailsRes.data || [];
 
+      console.log("tokens: ", tokens);
+      console.log("token details: ", tokenDetails);
+
       // Build a map of token → number for quick lookup
       const numberMap = {};
       if (Array.isArray(tokenDetails)) {
