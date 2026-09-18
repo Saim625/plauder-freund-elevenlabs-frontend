@@ -38,7 +38,7 @@ export const UsageCosts = ({ token: adminToken }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [summaryRes, platformRes] = await Promise.all([
+      const [summaryRes, platformRes, detailsRes] = await Promise.all([
         // axios.get(`${API_BASE_URL}/usage/summary?month=${selectedMonth}`, {
         //   headers,
         // }),
@@ -47,8 +47,31 @@ export const UsageCosts = ({ token: adminToken }) => {
         axios.get(`${API_BASE_URL}/usage/platform?month=${selectedMonth}`, {
           headers,
         }),
+        axios.get(`${API_BASE_URL}/getTokenDetails`, {
+          params: { token: adminToken },
+          headers,
+        }),
       ]);
-      setSummaries(summaryRes.data.data || []);
+      const tokenDetails = detailsRes.data?.tokens || detailsRes.data || [];
+      const detailsMap = new Map(
+        (Array.isArray(tokenDetails) ? tokenDetails : []).map((detail) => [
+          detail.token,
+          detail,
+        ]),
+      );
+      setSummaries(
+        (summaryRes.data.data || []).map((summary) => {
+          const details = detailsMap.get(summary.userToken);
+          return {
+            ...summary,
+            name: details?.name || null,
+            number: (details?.phoneNumbers || [])
+              .map((phone) => phone.number)
+              .filter(Boolean)
+              .join(", "),
+          };
+        }),
+      );
       setPlatform(platformRes.data || null);
     } catch (err) {
       toast.error("Failed to load usage data");
@@ -223,7 +246,8 @@ export const UsageCosts = ({ token: adminToken }) => {
                 <tr>
                   {[
                     "Token",
-                    "Number",
+                    "Name",
+                    "Phone Numbers",
                     "Sessions",
                     "Duration",
                     "Total Tokens",
@@ -243,7 +267,7 @@ export const UsageCosts = ({ token: adminToken }) => {
                 {summaries.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-5 py-10 text-center text-gray-400"
                     >
                       No usage data yet. Sessions will appear here after users
@@ -260,7 +284,12 @@ export const UsageCosts = ({ token: adminToken }) => {
                         {s.userToken.substring(0, 14)}…
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-600">
-                        {s.user?.number || (
+                        {s.name || (
+                          <span className="text-gray-400 italic text-xs">Not assigned</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-gray-600">
+                        {s.number || (
                           <span className="text-gray-400 italic text-xs">
                             Not assigned
                           </span>
@@ -292,7 +321,7 @@ export const UsageCosts = ({ token: adminToken }) => {
                             setSessionsModal({
                               open: true,
                               userToken: s.userToken,
-                              number: s.user?.number,
+                              number: s.number,
                             })
                           }
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium border border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
@@ -322,6 +351,10 @@ export const UsageCosts = ({ token: adminToken }) => {
                     {fmtShort(s.totalCost)}
                   </span>
                 </div>
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500">Name</p>
+                  <p className="text-sm text-gray-800">{s.name || "Not assigned"}</p>
+                </div>
                 <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                   <div className="bg-gray-50 rounded p-2">
                     <p className="text-xs text-gray-500">Sessions</p>
@@ -334,9 +367,9 @@ export const UsageCosts = ({ token: adminToken }) => {
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded p-2">
-                    <p className="text-xs text-gray-500">Number</p>
+                    <p className="text-xs text-gray-500">Phone Numbers</p>
                     <p className="text-sm font-semibold">
-                      {s.user?.number || "—"}
+                      {s.number || "Not assigned"}
                     </p>
                   </div>
                 </div>
@@ -345,7 +378,7 @@ export const UsageCosts = ({ token: adminToken }) => {
                     setSessionsModal({
                       open: true,
                       userToken: s.userToken,
-                      number: s.user?.number,
+                      number: s.number,
                     })
                   }
                   className="w-full text-blue-600 border border-blue-200 hover:bg-blue-50 text-sm font-medium py-2 rounded-lg transition-colors"

@@ -28,22 +28,24 @@ export const PersonalityConfig = ({ token: adminToken }) => {
       const tokens = configRes.data.tokens || [];
       const tokenDetails = detailsRes.data?.tokens || detailsRes.data || [];
 
-      console.log("tokens: ", tokens);
-      console.log("token details: ", tokenDetails);
+      const detailsMap = new Map(
+        (Array.isArray(tokenDetails) ? tokenDetails : []).map((detail) => [
+          detail.token,
+          detail,
+        ]),
+      );
 
-      // Build a map of token → number for quick lookup
-      const numberMap = {};
-      if (Array.isArray(tokenDetails)) {
-        tokenDetails.forEach((t) => {
-          if (t.token) numberMap[t.token] = t.number || null;
-        });
-      }
-
-      // Merge number into each config token
-      const merged = tokens.map((t) => ({
-        ...t,
-        number: numberMap[t.token] || null,
-      }));
+      const merged = tokens.map((t) => {
+        const details = detailsMap.get(t.token);
+        return {
+          ...t,
+          name: details?.name || null,
+          number: (details?.phoneNumbers || [])
+            .map((phone) => phone.number)
+            .filter(Boolean)
+            .join(", "),
+        };
+      });
 
       setData({ tokens: merged, count: configRes.data.count || 0 });
     } catch (err) {
@@ -53,8 +55,6 @@ export const PersonalityConfig = ({ token: adminToken }) => {
       setLoading(false);
     }
   };
-
-  console.log("Data:", data);
 
   useEffect(() => {
     if (adminToken) fetchConfigs();
@@ -148,7 +148,10 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                     User Token
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Number
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Phone Numbers
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Last Updated
@@ -168,6 +171,9 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                       <span className="font-mono text-sm text-gray-900">
                         {t.token.substring(0, 16)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {t.name || <span className="text-gray-400 italic">Not assigned</span>}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {t.number ? (
@@ -208,7 +214,13 @@ export const PersonalityConfig = ({ token: adminToken }) => {
                   </p>
                 </div>
                 <div className="mb-3">
-                  <p className="text-xs text-gray-500 mb-1">Number</p>
+                  <p className="text-xs text-gray-500 mb-1">Name</p>
+                  <p className="text-sm text-gray-900">
+                    {t.name || <span className="text-gray-400 italic">Not assigned</span>}
+                  </p>
+                </div>
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Phone Numbers</p>
                   {t.number ? (
                     <p className="text-sm font-mono text-gray-900">
                       {t.number}
