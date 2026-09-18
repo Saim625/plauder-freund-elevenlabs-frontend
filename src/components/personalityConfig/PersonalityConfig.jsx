@@ -51,6 +51,8 @@ export const PersonalityConfig = ({ token: adminToken }) => {
     }
   };
 
+  console.log("Data:", data);
+
   useEffect(() => {
     if (adminToken) fetchConfigs();
   }, [adminToken]);
